@@ -1,0 +1,6 @@
+numpy~=2.2.0 # For gymnasium env and for scientific calculations
+gymnasium~=1.0.0 # Standard enviroment base
+tqdm~=4.67.1 # For progress bars
+torch~=2.5.1 # To train models
+matplotlib~=3.10.0 # To plot canvas to show trainig progress
+
