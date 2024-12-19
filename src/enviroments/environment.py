@@ -1,10 +1,11 @@
-from typing import Tuple, Dict, Any, Union
+from typing import Tuple, Dict, Any, Union, SupportsFloat
 
 import gymnasium as gym
 import numpy
 import numpy as np
 import torch
 from gymnasium import Space
+from torch import Tensor
 
 
 class Environment:
@@ -23,13 +24,18 @@ class Environment:
             obs, info = env.reset()
             action = env.sample_action()
             obs, reward, terminated, truncated, info = env.step(action)
+            env.save("envs/env1.env")
+
 
         # Using tensors
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         with Environment(gym.make('CartPole-v1'), use_tensor=True, device=device) as env:
+            env.load("envs/env1.env")
             obs, info = env.reset()  # obs will be a tensor
             action = env.sample_action()  # action will be a tensor
             obs, reward, terminated, truncated, info = env.step(action)
+
+
     """
 
     def __init__(self, env: gym.Env, use_tensor: bool = False, device: torch.device = torch.device('cpu')):
@@ -61,6 +67,25 @@ class Environment:
         """
         self.env.close()
 
+    # Saving and loading ( optional )
+
+    def save(self, file_path: str):
+        """
+        Saves the environment current state. Optional.
+        :param file_path: the path of the file for saving the state.
+        :raises OSError: if any problem occurs while saving in memory the data.
+        """
+        pass
+
+    def load(self, file_path: str):
+        """
+        Loads the environment state. Optional.
+        :param file_path: the path of the file for loading the state.
+        :raises FileNotFoundError: If the file doesn't exist.
+        :raises ValueError: If the file is not in the right format.
+        """
+        pass
+
     # Enviroment exploration methods
 
     def reset(self) -> Tuple[Union[numpy.ndarray, torch.Tensor], Dict[str, Any]]:
@@ -73,8 +98,8 @@ class Environment:
             state = torch.tensor(state, dtype=torch.float32, device=self.device)
         return state, info
 
-    def step(self, action: Union[numpy.ndarray, torch.Tensor]) -> Tuple[
-        Union[numpy.ndarray, torch.Tensor], float, bool, bool, Dict[str, Any]]:
+    def step(self, action: Union[numpy.ndarray, torch.Tensor]) -> tuple[
+        Tensor | Any, SupportsFloat, bool, bool, dict[str, Any]]:
         """
         Steps the environment\
         :param action: The action to take in the environment (tensor or numpy array)

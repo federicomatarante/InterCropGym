@@ -1,5 +1,6 @@
 import abc
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, SupportsFloat
+
 import numpy as np
 
 
@@ -34,10 +35,6 @@ class Agent(abc.ABC):
             next_state, reward, done, _ = env.step(action)
             agent.update(state, action, reward, next_state, done)
             state = next_state
-
-    :param state_dim: Dimension of the state space
-    :param action_dim: Dimension of the action space
-    :param learning_rate: Learning rate for policy updates
     """
 
     def __init__(self):
@@ -56,7 +53,7 @@ class Agent(abc.ABC):
 
     @abc.abstractmethod
     def update(self, state: np.ndarray, action: np.ndarray,
-               reward: float, next_state: np.ndarray, done: bool) -> Dict[str, float]:
+               reward: SupportsFloat, next_state: np.ndarray, done: bool) -> Dict[str, float]:
         """Update the agent's policy based on a single transition.
 
         :param state: Current state
