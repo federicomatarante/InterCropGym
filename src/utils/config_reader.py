@@ -42,16 +42,37 @@ class ConfigReader:
         """
         self.config_data = config_data
 
-    def get_param(self, param_path: str, default: Any = None) -> Any:
+    def get_param(self, param_path: str, default: Any = None, v_type: type = None) -> Any:
         """
         Get a parameter value using dot notation path\
+        :param v_type: casting type of the parameter.
         :param param_path: Path to the parameter using dot notation (e.g., 'database.host' where 'database' is the section)
         :param default: Default value to return if parameter is not found
+        :raises TyperError: if v_type is not respected.
         :return: The parameter value if found, otherwise the default value
         """
         try:
             section, param = param_path.split('.')
-            return self.config_data[section][param]
+            data = self.config_data[section][param]
+
+            if v_type is not None:
+                try:
+                    # Special handling for bool type since bool('False') == True
+                    if v_type is bool and isinstance(data, str):
+                        data = data.lower() == 'true'
+                    elif v_type in (list, tuple, set) and isinstance(data, str):
+                        if ((data.startswith('[') and data.endswith(']')) or
+                                (data.startswith('(') and data.endswith(')')) or
+                                (data.startswith('{') and data.endswith('}'))):
+                            data = data.strip('{[()]}')
+                            data = data.split(',')
+                            data = v_type(data)
+                    else:
+                        data = v_type(data)
+                except (ValueError, TypeError):
+                    raise TypeError(f"Given type for param {param_path}: '{type(data)}'. Expected: {v_type}")
+
+            return data
         except (KeyError, ValueError):
             return default
 
