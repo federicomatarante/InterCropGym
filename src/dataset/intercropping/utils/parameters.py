@@ -33,21 +33,15 @@ class BaseEnum(Enum):
         """
         Get enum member from its value.
 
-        Args:
-            value: The value to get the enum member for
-
-        Returns:
-            The enum member corresponding to the value
-
-        Raises:
-            ValueError: If no enum member has the specified value
+        :param value: The value to get the enum member for
+        :return: The enum member corresponding to the value
+        :raises: ValueError: If no enum member has the specified value
         """
         try:
             return cls._value2member_map_[value]
         except KeyError:
             raise ValueError(f"'{cls.__name__}' has no value {value}")
 
-    # TODO change documentation style
 
     @classmethod
     def has_value(cls, value: Any) -> bool:
