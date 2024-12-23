@@ -95,9 +95,9 @@ class IntercroppingMLP(nn.Module, Intercropping):
     """
     _INPUT_DIM = 285
 
-    def __init__(self, hidden_layers_sizes: list[int] = None, act_function='LeakyReLU', device: torch.device = None):
+    def __init__(self, hidden_layers_sizes: tuple[int,...] = None, act_function='LeakyReLU', device: torch.device = None):
         super().__init__()
-        hidden_layers_sizes = hidden_layers_sizes if hidden_layers_sizes else [128, 64]
+        hidden_layers_sizes = list(hidden_layers_sizes) if hidden_layers_sizes else [128, 64]
         hidden_layers_sizes.insert(0, self._INPUT_DIM)
         self.hidden_layers = []
         for i in range(len(hidden_layers_sizes) - 1):
@@ -114,8 +114,7 @@ class IntercroppingMLP(nn.Module, Intercropping):
             'tanh': nn.Tanh,
             'softmax': nn.Softmax
         }
-
-        if act_function.lower() not in act_functions:
+        if act_function.lower() not in act_functions.keys():
             raise ValueError("Activation function ", act_function, " is not allowed! Choose between: ",
                              list(act_functions.keys()))
 
