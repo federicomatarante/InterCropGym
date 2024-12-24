@@ -48,6 +48,7 @@ class ConfigReader:
         :param v_type: casting type of the parameter.
         :param param_path: Path to the parameter using dot notation (e.g., 'database.host' where 'database' is the section)
         :param default: Default value to return if parameter is not found
+        :raises ValueError: if the parameter is not found and not default provided
         :raises TyperError: if v_type is not respected.
         :return: The parameter value if found, otherwise the default value
         """
@@ -70,10 +71,15 @@ class ConfigReader:
                     else:
                         data = v_type(data)
                 except (ValueError, TypeError):
-                    raise TypeError(f"Given type for param {param_path}: '{type(data)}'. Expected: {v_type}")
-
+                    if default is None:
+                        raise TypeError(f"Type conversion failed for param {param_path}. Got type {type(data)}, expected: {v_type}")
+                    else:
+                        return default
+                    
             return data
-        except (KeyError, ValueError):
+        except (KeyError, ValueError) as e:
+            if default is None:
+                raise ValueError(f"Parameter {param_path} not found and no default value provided") from e
             return default
 
     def get_section(self, section: str) -> Optional[Dict[str, str]]:
