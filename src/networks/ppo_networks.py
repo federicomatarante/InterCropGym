@@ -73,6 +73,12 @@ class ActorNetwork(BaseNetwork):
         distribution = self.get_distribution(state)
         action = distribution.sample()
         log_prob = distribution.log_prob(action)
+
+        # Conversion to scalar only for discrete action spaces with 1D output
+        # Useful for test with cart pole environment
+        if isinstance(distribution, Categorical):
+            action = action.item()
+            
         return action, log_prob
     
     def get_config(self) -> Dict[str, Any]:
