@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from typing import Tuple, Dict, Any
 
 from .intercropping_parameters import IntercroppingParameters
-from ..utils.crop_metrics import CropMetrics
-from ..utils.simulation_parameters import SimulationParameters
+from ..utils.crop_state import CropState
+from ..utils.lintul3_parameters import LINTUL3Parameters
 
 
 class BaseIntercroppingSystem(ABC):
@@ -28,10 +28,10 @@ class BaseIntercroppingSystem(ABC):
     @abstractmethod
     def _calculate_light_competition(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
     ) -> Dict[str, Any]:
         """
         Calculate effects of light competition between crops.
@@ -55,10 +55,10 @@ class BaseIntercroppingSystem(ABC):
     @abstractmethod
     def _calculate_water_competition(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
     ) -> Dict[str, float]:
         """
         Calculate water resource competition effects.
@@ -84,10 +84,10 @@ class BaseIntercroppingSystem(ABC):
     @abstractmethod
     def _calculate_nitrogen_interaction(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
     ) -> Dict[str, float]:
         """
         Calculate nitrogen transfer and competition effects.
@@ -115,10 +115,10 @@ class BaseIntercroppingSystem(ABC):
     @abstractmethod
     def _calculate_root_interaction(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
     ) -> Dict[str, Any]:
         """
         Calculate root system interaction effects.
@@ -146,10 +146,10 @@ class BaseIntercroppingSystem(ABC):
     @abstractmethod
     def _calculate_biomass_effects(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
     ) -> Dict[str, Any]:
         """
         Calculate overall biomass and growth effects.
@@ -175,11 +175,11 @@ class BaseIntercroppingSystem(ABC):
 
     def calculate_intercropping_effects(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
-    ) -> Tuple[CropMetrics, CropMetrics, SimulationParameters, SimulationParameters]:
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
+    ) -> Tuple[CropState, CropState, LINTUL3Parameters, LINTUL3Parameters]:
         """
         Calculate and combine all intercropping interaction effects.
 
@@ -201,10 +201,10 @@ class BaseIntercroppingSystem(ABC):
         biomass_effects = self._calculate_biomass_effects(metrics_1, metrics_2, state_1, state_2)
 
         # Create new instances for modification
-        new_metrics_1 = CropMetrics(**{k: v for k, v in metrics_1.__dict__.items()})
-        new_metrics_2 = CropMetrics(**{k: v for k, v in metrics_2.__dict__.items()})
-        new_state_1 = SimulationParameters(**{k: v for k, v in state_1.__dict__.items()})
-        new_state_2 = SimulationParameters(**{k: v for k, v in state_2.__dict__.items()})
+        new_metrics_1 = CropState(**{k: v for k, v in metrics_1.__dict__.items()})
+        new_metrics_2 = CropState(**{k: v for k, v in metrics_2.__dict__.items()})
+        new_state_1 = LINTUL3Parameters(**{k: v for k, v in state_1.__dict__.items()})
+        new_state_2 = LINTUL3Parameters(**{k: v for k, v in state_2.__dict__.items()})
 
         # Implement combination of effects in subclass
         self._combine_effects(
@@ -217,10 +217,10 @@ class BaseIntercroppingSystem(ABC):
     @abstractmethod
     def _combine_effects(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters,
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters,
             light_effects: Dict[str, Any],
             water_effects: Dict[str, Any],
             nitrogen_effects: Dict[str, Any],

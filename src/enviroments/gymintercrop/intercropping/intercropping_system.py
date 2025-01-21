@@ -3,8 +3,8 @@ from typing import Dict, Any
 import numpy as np
 
 from .base_intercropping_system import BaseIntercroppingSystem
-from ..utils.crop_metrics import CropMetrics
-from ..utils.simulation_parameters import SimulationParameters
+from ..utils.crop_state import CropState
+from ..utils.lintul3_parameters import LINTUL3Parameters
 
 
 class StandardIntercroppingSystem(BaseIntercroppingSystem):
@@ -16,10 +16,10 @@ class StandardIntercroppingSystem(BaseIntercroppingSystem):
 
     def _calculate_light_competition(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
     ) -> Dict[str, float]:
         # Calculate relative canopy positions based on stem weight
         taller_crop_factor = np.tanh(state_1.WST / (state_2.WST + 1e-6))
@@ -41,10 +41,10 @@ class StandardIntercroppingSystem(BaseIntercroppingSystem):
 
     def _calculate_water_competition(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
     ) -> Dict[str, float]:
         # Calculate total water demand
         total_transpiration = metrics_1.tran + metrics_2.tran
@@ -80,10 +80,10 @@ class StandardIntercroppingSystem(BaseIntercroppingSystem):
 
     def _calculate_nitrogen_interaction(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
     ) -> Dict[str, Any]:
         # Calculate N availability ratio for each crop
         n_ratio_1 = state_1.NUPTT / (state_1.TNSOIL + 1e-6)
@@ -108,10 +108,10 @@ class StandardIntercroppingSystem(BaseIntercroppingSystem):
 
     def _calculate_root_interaction(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
     ) -> Dict[str, Any]:
         # Calculate root zone overlap
         min_depth = min(state_1.ROOTD, state_2.ROOTD)
@@ -145,10 +145,10 @@ class StandardIntercroppingSystem(BaseIntercroppingSystem):
 
     def _calculate_biomass_effects(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters
     ) -> Dict[str, Any]:
         # Calculate relative biomass proportions
         total_biomass = metrics_1.tagbm + metrics_2.tagbm
@@ -173,10 +173,10 @@ class StandardIntercroppingSystem(BaseIntercroppingSystem):
 
     def _combine_effects(
             self,
-            metrics_1: CropMetrics,
-            metrics_2: CropMetrics,
-            state_1: SimulationParameters,
-            state_2: SimulationParameters,
+            metrics_1: CropState,
+            metrics_2: CropState,
+            state_1: LINTUL3Parameters,
+            state_2: LINTUL3Parameters,
             light_effects: Dict[str, Any],
             water_effects: Dict[str, Any],
             nitrogen_effects: Dict[str, Any],
