@@ -14,13 +14,14 @@ class Environment:
     :param env: The gymnasium environment
     :param use_tensor: Whether to return tensors instead of numpy arrays
     :param device: The device to place the tensors on if use_tensor is True
+    :param use_info: whether if te reset() method must return also info or not. Default is false.
 
     Usage:
         import gymnasium as gym
         import torch
 
         # Using numpy arrays
-        with Environment(gym.make('CartPole-v1')) as env:
+        with Environment(gym.make('CartPole-v1'),uses_info=True) as env:
             obs, info = env.reset()
             action = env.sample_action()
             obs, reward, terminated, truncated, info = env.step(action)
@@ -38,10 +39,12 @@ class Environment:
 
     """
 
-    def __init__(self, env: gym.Env, use_tensor: bool = False, device: torch.device = torch.device('cpu')):
+    def __init__(self, env: gym.Env, use_tensor: bool = False, device: torch.device = torch.device('cpu'),
+                 use_info=False):
         self.env = env
         self.use_tensor = use_tensor
         self.device = device
+        self.uses_info = use_info
 
     # Methods useful to automatically opening and closing the enviroment with "with"
 
@@ -88,15 +91,21 @@ class Environment:
 
     # Enviroment exploration methods
 
-    def reset(self) -> Tuple[Union[numpy.ndarray, torch.Tensor], Dict[str, Any]]:
+    def reset(self) -> Union[Tuple[Union[numpy.ndarray, torch.Tensor], Dict[str, Any]],Tuple[Union[numpy.ndarray, torch.Tensor]]]:
         """
         Resets the environment to initial state\
-        :return: A tuple containing (observation, info dictionary). Observation is tensor if use_tensor=True, numpy array otherwise
+        :return: A tuple containing (observation, info dictionary) if uses_info=True, else only the observation.
+         Observation is tensor if use_tensor=True, numpy array otherwise
         """
-        state, info = self.env.reset()
+        state = self.env.reset()
         if self.use_tensor:
-            state = torch.tensor(state, dtype=torch.float32, device=self.device)
-        return state, info
+            if self.uses_info:
+                s = torch.tensor(state[0], dtype=torch.float32, device=self.device)
+                state = (s,) + state[1:]
+            else:
+                state = torch.tensor(state, dtype=torch.float32, device=self.device)
+
+        return state
 
     def step(self, action: Union[numpy.ndarray, torch.Tensor]) -> tuple[
         Tensor | Any, SupportsFloat, bool, bool, dict[str, Any]]:
@@ -109,10 +118,10 @@ class Environment:
             cpu = torch.device('cpu')
             action = action.to(cpu).numpy().astype(np.float32)
 
-        observation, reward, terminated, truncated, info = self.env.step(action)
+        observation, reward, done, truncated, info = self.env.step(action)
         if self.use_tensor:
             observation = torch.tensor(observation, dtype=torch.float32, device=self.device)
-        return observation, reward, terminated, truncated, info
+        return observation, reward, done, truncated, info
 
     def sample_action(self) -> Union[numpy.ndarray, torch.Tensor]:
         """
