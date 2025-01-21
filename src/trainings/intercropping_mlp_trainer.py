@@ -12,7 +12,7 @@ from tqdm import tqdm
 from src.dataset.intercropping.intercropping_mlp import IntercroppingMLP
 from src.dataset.intercropping.readers.dataset_loader import DatasetLoader
 from src.trainings.utils.training_step_handler import TrainingStepHandler
-from src.utils.config_reader import ConfigReader
+from src.utils.configs.config_reader import ConfigReader
 from src.trainings.utils.training_plotter import TrainingPlotter
 
 

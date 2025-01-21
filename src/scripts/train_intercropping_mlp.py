@@ -5,8 +5,8 @@ from typing import Optional
 from src.dataset.intercropping.intercropping_mlp import IntercroppingMLP
 from src.dataset.intercropping.readers.dataset_loader import DatasetLoader
 from src.trainings.intercropping_mlp_trainer import IntercroppingMLPTrainer
-from src.utils.config_reader import ConfigReader
-from src.utils.ini_config_reader import INIConfigReader
+from src.utils.configs.config_reader import ConfigReader
+from src.utils.configs.ini_config_reader import INIConfigReader
 
 """
 Intercropping MLP Training and Evaluation Script
