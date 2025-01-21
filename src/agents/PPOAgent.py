@@ -119,16 +119,26 @@ class PPOAgent(Agent):
             value = self.critic(state_tensor)
 
             if reward is not None and done is not None:
+
+                # Convert scalar actions to numpy array for storage
+                action_array = np.array([action]) if isinstance(action, (int, float)) else action.cpu().numpy()
                 self.buffer.store(
                     state=state,
-                    action=action.cpu().numpy(),
+                    action=action_array,
                     reward=reward,
                     value=value.cpu().numpy(),
                     log_prob=log_prob.cpu().numpy(),
                     done=done
                 )
 
-        return action.cpu().numpy(), value.cpu().numpy(), log_prob.cpu().numpy()
+            # Prepare outputs: 
+            # - IF action is already scalar (discrete case), return as is
+            # - IF action is tensor (continuous case), convert to numpy array
+            action_out = action if isinstance(action, (int, float)) else action.cpu().numpy()
+            value_out = value.cpu().numpy()
+            log_prob_out = log_prob.cpu().numpy()
+
+            return action_out, value_out, log_prob_out
     
     def update(self, state: np.ndarray, action: np.ndarray, reward: float, next_state: np.ndarray, done: bool) -> Dict[str, float]:
         """
@@ -157,10 +167,20 @@ class PPOAgent(Agent):
                 - value_loss: Average value function loss across updates
                 - entropy: Average entropy of policy distribution
         """
+        # Check if buffer has enough data
+        if len(self.buffer) < self.batch_size:
+            print(f"Warning: Not enough data in buffer (size: {len(self.buffer)}) for update with batch size {self.batch_size}.")
+            return {
+                'policy_loss': 0.0,
+                'value_loss': 0.0,
+                'entropy': 0.0
+            }
+        
         data = self.buffer.get()
         total_policy_loss = 0
         total_value_loss = 0
         total_entropy = 0
+        update_count = 0
 
         # Perform multiple epochs of updates
         for _ in range(self.num_epochs):
@@ -169,7 +189,12 @@ class PPOAgent(Agent):
 
             # Update in minibatches
             for start in range(0, len(self.buffer), self.batch_size):
-                batch_indices = indices[start:start + self.batch_size]
+                end = min(start + self.batch_size, len(self.buffer))
+                if end - start < self.batch_size: # skip last batch if too small
+                    continue
+
+                update_count += 1
+                batch_indices = indices[start:end]
 
                 # Get batch data
                 states = data['states'][batch_indices]
@@ -227,12 +252,18 @@ class PPOAgent(Agent):
         # Clear buffer after update
         self.buffer.clear()
 
-        # Return metrics
-        num_updates = self.num_epochs * (len(self.buffer) // self.batch_size)
+        # Return metrics (handle also case where no updates were performed)
+        if update_count == 0:
+            return {
+                'policy_loss': 0.0,
+                'value_loss': 0.0,
+                'entropy': 0.0
+            }
+        
         return {
-            'policy_loss': total_policy_loss / num_updates,
-            'value_loss': total_value_loss / num_updates,
-            'entropy': total_entropy / num_updates
+            'policy_loss': total_policy_loss / update_count,
+            'value_loss': total_value_loss / update_count,
+            'entropy': total_entropy / update_count
         }
     
     def save(self, path: str) -> None:

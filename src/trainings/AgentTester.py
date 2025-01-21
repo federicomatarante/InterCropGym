@@ -43,16 +43,10 @@ class AgentTester:
         
         # setup device
         self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-        # setup environment
-        self.env = Environment(gym.make(env_id))
-        self.state_dim = self.env.observation_space.shape[0]
-        self.action_dim = (self.env.action_space.n
-                           if isinstance(self.env.action_space, gym.spaces.Discrete)
-                           else self.env.action_space.shape[0])
-
-        # setup agent
-        self.setup_agent(agent_type, config_path)
+        self.env = None
+        self.env_id = env_id
+        self.agent_type = agent_type
+        self.config_path = config_path
 
     def setup_agent(self, agent_type: Type[Agent], config_path: str) -> None:
         """
@@ -133,6 +127,18 @@ class AgentTester:
         :param verbose: Whether to print test results.
         :return: Dictionary containing test results.
         """
+        env_kwargs = {'render_mode': 'human'} if render else {}
+        gym_env = gym.make(self.env_id, **env_kwargs)
+        self.env = Environment(gym_env)
+
+        # Setup agent if not done
+        if not hasattr(self, 'agent'):
+            self.state_dim = self.env.observation_space.shape[0]
+            self.action_dim = (self.env.action_space.n
+                               if isinstance(self.env.action_space, gym.spaces.Discrete)
+                               else self.env.action_space.shape[0])
+            self.setup_agent(self.agent_type, self.config_path)
+            
         if verbose:
             print(f"\nTesting {self.agent_name} on {self.env.env.unwrapped.spec.id}")
             print(f"Episodes: {num_episodes}, Max Steps: {max_steps}")

@@ -64,11 +64,19 @@ class BaseNetwork(nn.Module, abc.ABC):
         prev_size = input_dim
 
         # Get activation function
-        if hasattr(nn, activation.lower()):
-            activation_fn = getattr(nn, activation.lower())
-        else:
-            raise ValueError(f"Activation function '{activation}' not found in torch.nn")
+        activation_map = {
+            'relu': nn.ReLU,
+            'tanh': nn.Tanh,
+            'sigmoid': nn.Sigmoid,
+            'leakyrelu': nn.LeakyReLU
+        }
         
+        activation_lower = activation.lower()
+        if activation_lower in activation_map:
+            activation_fn = activation_map[activation_lower]
+        else:
+            raise ValueError(f"Activation function {activation} not supported. Choose from: {list(activation_map.keys())}")
+
         # Build hidden layers
         for size in hidden_sizes:
             layers.extend([
