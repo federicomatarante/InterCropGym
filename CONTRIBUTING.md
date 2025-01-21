@@ -1,7 +1,6 @@
 # Contributing Guidelines
 
 ## Code Organization Rules
-
 ### 1. Classes and Modules
 - Each logical component should be a class
 - One class per file

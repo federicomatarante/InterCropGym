@@ -1,6 +1,15 @@
-numpy~=2.2.0 # For gymnasium env and for scientific calculations
+numpy<2.0 # For gymnasium env and for scientific calculations
 gymnasium~=1.0.0 # Standard enviroment base
 tqdm~=4.67.1 # For progress bars
 torch~=2.5.1 # To train models
 matplotlib~=3.10.0 # To plot canvas to show trainig progress
 
+# For CropGym Enviroment
+--find-links https://download.pytorch.org/whl/torch_stable.html
+
+sympy~=1.13.1
+PCSE~=6.0.8
+pandas~=2.2.3
+PyYAML~=6.0.2
+gym~=0.26.2
+setuptools~=68.2.0
