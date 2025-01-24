@@ -42,13 +42,9 @@ class OpenCropGymEnv(FertilizationEnv):
         self._last_output = None
         self._pre_step_done = False
         self._update_done = False
-
-        crop = PCSEFileReader(os.path.join(DATA_DIR, "crop",
-                                           crop_file))
-        soil = PCSEFileReader(os.path.join(DATA_DIR, "soil",
-                                           soil_file))
-        site = PCSEFileReader(os.path.join(DATA_DIR, "site",
-                                           site_file))
+        crop = PCSEFileReader(crop_file)
+        soil = PCSEFileReader(soil_file)
+        site = PCSEFileReader(site_file)
         self.parameterprovider = pcse.base.ParameterProvider(soildata=soil, cropdata=crop,
                                                              sitedata=site)
         self.model = pcse.models.LINTUL3(self.parameterprovider, self.weatherdataprovider,

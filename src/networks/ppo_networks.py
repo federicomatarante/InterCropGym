@@ -1,11 +1,12 @@
 from typing import Tuple, Dict, Any
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
-from networks.baseNetwork import BaseNetwork
+from src.networks.baseNetwork import BaseNetwork
+from src.networks.utils.discrete_clipped_activation import DiscreteParameterizedActivation
+
 
 class ActorNetwork(BaseNetwork):
     """
@@ -34,13 +35,16 @@ class ActorNetwork(BaseNetwork):
         action, log_prob = actor.get_action_and_log_prob(state)    
     """
 
-    def __init__(self, input_dim: int, action_dim: int, **kwargs):
+    def __init__(self, input_dim: int, action_dim: int, max_val: int, **kwargs):
         super().__init__(input_dim=input_dim,
-                        output_dim=action_dim,
-                        name='DiscreteActor',
-                        **kwargs)
-        
+                         output_dim=action_dim,
+                         name='DiscreteActor',
+                         **kwargs)
+
         self.action_dim = action_dim
+        self.act = DiscreteParameterizedActivation(
+            max_val=max_val
+        )
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """
@@ -50,7 +54,7 @@ class ActorNetwork(BaseNetwork):
         :return: Action logits tensor of shape (batch_size, action_dim)
         """
         return self.network(state)
-    
+
     def get_distribution(self, state: torch.Tensor) -> Categorical:
         """
         Get discrete action distribution for a given state.
@@ -62,7 +66,7 @@ class ActorNetwork(BaseNetwork):
         # Convert logits to probabilities using softmax
         probs = F.softmax(logits, dim=-1)
         return Categorical(probs)
-    
+
     def get_action_and_log_prob(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Sample action and get its log probability.
@@ -70,17 +74,11 @@ class ActorNetwork(BaseNetwork):
         :param state: State tensor
         :return: Tuple of (action, log_prob) tensors
         """
-        distribution = self.get_distribution(state)
-        action = distribution.sample()
-        log_prob = distribution.log_prob(action)
-
-        # Conversion to scalar only for discrete action spaces with 1D output
-        # Useful for test with cart pole environment
-        if isinstance(distribution, Categorical):
-            action = action.item()
-            
+        logits = self(state)
+        action = self.act(logits)
+        log_prob = -torch.nn.functional.binary_cross_entropy_with_logits(logits, action / self.act.max_val)
         return action, log_prob
-    
+
     def get_config(self) -> Dict[str, Any]:
         """Get network configuration."""
         config = super().get_config()
@@ -88,7 +86,8 @@ class ActorNetwork(BaseNetwork):
             'action_dim': self.action_dim
         })
         return config
-    
+
+
 class CriticNetwork(BaseNetwork):
     """
     Critic network for PPO that estimates state values.
@@ -111,10 +110,10 @@ class CriticNetwork(BaseNetwork):
 
     def __init__(self, input_dim: int, **kwargs):
         super().__init__(input_dim=input_dim,
-                        output_dim=1,
-                        name='Critic',
-                        **kwargs)
-    
+                         output_dim=1,
+                         name='Critic',
+                         **kwargs)
+
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """
         Forward pass through the network.
@@ -123,4 +122,4 @@ class CriticNetwork(BaseNetwork):
         :return: Value tensor of shape (batch_size, 1)
         """
         value = self.network(state)
-        return value.squeeze(-1) # Remove last dimension
+        return value.squeeze(-1)  # Remove last dimension

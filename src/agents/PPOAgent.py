@@ -3,10 +3,11 @@ import numpy as np
 import torch
 import torch.optim as optim
 
-from agents.agent import Agent
-from networks.ppo_networks import ActorNetwork, CriticNetwork
-from buffers.ppo_buffer import PPOBuffer
-from utils.config_reader import ConfigReader
+from src.agents.agent import Agent
+from src.buffers.ppo_buffer import PPOBuffer
+from src.networks.ppo_networks import ActorNetwork, CriticNetwork
+from src.utils.configs.config_reader import ConfigReader
+
 
 class PPOAgent(Agent):
     """
@@ -49,6 +50,7 @@ class PPOAgent(Agent):
     def __init__(self,
                  state_dim: int,
                  action_dim: int,
+                 max_val: int,
                  config: ConfigReader,
                  device: torch.device):
         super().__init__()
@@ -78,7 +80,8 @@ class PPOAgent(Agent):
             action_dim=action_dim,
             hidden_sizes=actor_hidden,
             activation=activation,
-            device=device
+            device=device,
+            max_val=max_val
         )
 
         self.critic = CriticNetwork(
@@ -99,7 +102,8 @@ class PPOAgent(Agent):
             device=device
         )
 
-    def act(self, state: np.ndarray, reward: Optional[float] = None, done: Optional[bool] = None, explore: bool = True) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def act(self, state: np.ndarray, reward: Optional[float] = None, done: Optional[bool] = None,
+            explore: bool = True) -> np.ndarray:
         """
         Select an action given the current state and optionally store transition in buffer.
         
@@ -119,7 +123,6 @@ class PPOAgent(Agent):
             value = self.critic(state_tensor)
 
             if reward is not None and done is not None:
-
                 # Convert scalar actions to numpy array for storage
                 action_array = np.array([action]) if isinstance(action, (int, float)) else action.cpu().numpy()
                 self.buffer.store(
@@ -137,10 +140,11 @@ class PPOAgent(Agent):
             action_out = action if isinstance(action, (int, float)) else action.cpu().numpy()
             value_out = value.cpu().numpy()
             log_prob_out = log_prob.cpu().numpy()
+            # return action,value,log_prob_out #TODO Serve a qualcosa ritornare questi valori?
+            return action_out
 
-            return action_out, value_out, log_prob_out
-    
-    def update(self, state: np.ndarray, action: np.ndarray, reward: float, next_state: np.ndarray, done: bool) -> Dict[str, float]:
+    def update(self, state: np.ndarray, action: np.ndarray, reward: float, next_state: np.ndarray, done: bool) -> Dict[
+        str, float]:
         """
         Check if episode is done and update networks.
         
@@ -156,7 +160,7 @@ class PPOAgent(Agent):
             metrics = self.update_networks(next_state)
             return metrics
         return {}
-    
+
     def update_networks(self, final_state: np.ndarray) -> Dict[str, float]:
         """
         Update actor and critic networks using PPO algorithm.
@@ -169,13 +173,14 @@ class PPOAgent(Agent):
         """
         # Check if buffer has enough data
         if len(self.buffer) < self.batch_size:
-            print(f"Warning: Not enough data in buffer (size: {len(self.buffer)}) for update with batch size {self.batch_size}.")
+            print(
+                f"Warning: Not enough data in buffer (size: {len(self.buffer)}) for update with batch size {self.batch_size}.")
             return {
                 'policy_loss': 0.0,
                 'value_loss': 0.0,
                 'entropy': 0.0
             }
-        
+
         data = self.buffer.get()
         total_policy_loss = 0
         total_value_loss = 0
@@ -190,7 +195,7 @@ class PPOAgent(Agent):
             # Update in minibatches
             for start in range(0, len(self.buffer), self.batch_size):
                 end = min(start + self.batch_size, len(self.buffer))
-                if end - start < self.batch_size: # skip last batch if too small
+                if end - start < self.batch_size:  # skip last batch if too small
                     continue
 
                 update_count += 1
@@ -248,7 +253,7 @@ class PPOAgent(Agent):
                 total_policy_loss += policy_loss.item()
                 total_value_loss += value_loss.item()
                 total_entropy += entropy.item()
-        
+
         # Clear buffer after update
         self.buffer.clear()
 
@@ -259,13 +264,13 @@ class PPOAgent(Agent):
                 'value_loss': 0.0,
                 'entropy': 0.0
             }
-        
+
         return {
             'policy_loss': total_policy_loss / update_count,
             'value_loss': total_value_loss / update_count,
             'entropy': total_entropy / update_count
         }
-    
+
     def save(self, path: str) -> None:
         """
         Save agent networks.

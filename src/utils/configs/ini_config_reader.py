@@ -1,6 +1,6 @@
 import configparser
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional, Dict, Any
 
 from src.utils.configs.config_reader import ConfigReader
 
@@ -8,9 +8,8 @@ from src.utils.configs.config_reader import ConfigReader
 class INIConfigReader(ConfigReader):
     """
     A class to read and manage configuration parameters from INI files\
-    See `ConfigReader` methods documentation for further reference.
+    See 'ConfigReader' methods documentation for further reference.
     :param config_path: Path to the INI configuration file
-    :param base_path: base path directory. See `ConfigReader` documentation for further explanations.
     :ivar config_data: Dictionary containing the parsed configuration data
                       Structure: {section_name: {param_name: param_value}}
                       Example: {'database': {'host': 'localhost', 'port': '5432'}}
@@ -68,3 +67,22 @@ class INIConfigReader(ConfigReader):
         for section in parser.sections():
             config_data[section] = dict(parser[section])
         return config_data
+
+    def get_param(self, param_path: str, default: Any = None, v_type: type = None, nullable=False,domain=None) -> Any:
+        try:
+            return super().get_param(param_path, default, v_type, nullable,domain)
+        except (ValueError, TypeError) as e:
+            raise type(e)(f'Error with configuration file "{self.config_path}": {str(e)}') from e
+
+    def get_collection(self, param_path: str, default: Any = None, v_type: type = None, collection_type: type = tuple,
+                       nullable: bool = False, num_elems: int = None,domain=None):
+        try:
+            return super().get_collection(param_path, default, v_type, collection_type, nullable, num_elems,domain)
+        except (ValueError, TypeError) as e:
+            raise type(e)(f'Error with configuration file "{self.config_path}": {str(e)}') from e
+
+    def get_section(self, section: str) -> Optional[Dict[str, str]]:
+        try:
+            return super().get_section(section)
+        except (ValueError, TypeError) as e:
+            raise type(e)(f'Error with configuration file "{self.config_path}": {str(e)}') from e

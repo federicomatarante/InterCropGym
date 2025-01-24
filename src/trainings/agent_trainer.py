@@ -1,6 +1,6 @@
 import json
 from json import JSONDecodeError
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Tuple
 from pathlib import Path
 import numpy as np
 from numpy import floating
@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from src.agents.agent import Agent
 from src.enviroments.environment import Environment
-from src.utils.ini_config_reader import ConfigReader
+from src.utils.configs.ini_config_reader import ConfigReader
 
 
 class AgentTrainer:
@@ -166,17 +166,18 @@ class AgentTrainer:
         """
         self.config_data = config_reader.config_data
         # Episodes
-        self.train_episodes = config_reader.get_param('episodes.train_episodes')
-        self.eval_episodes = config_reader.get_param('episodes.eval_episodes')
-        self.eval_frequency = config_reader.get_param('episodes.eval_frequency')
-        self.max_steps_per_episode = config_reader.get_param('episodes.max_steps_per_episode')
+        self.train_episodes = config_reader.get_param('episodes.train_episodes', v_type=int)
+        self.eval_episodes = config_reader.get_param('episodes.eval_episodes', v_type=int)
+        self.eval_frequency = config_reader.get_param('episodes.eval_frequency', v_type=int)
+        self.max_steps_per_episode = config_reader.get_param('episodes.max_steps_per_episode', v_type=int)
         # Checkpoints
-        self.save_frequency = config_reader.get_param('checkpoints.save_frequency')
-        self.save_path = config_reader.get_param('checkpoints.save_path')
-        self.log_path = config_reader.get_param('checkpoints.log_path')
+        self.save_frequency = config_reader.get_param('checkpoints.save_frequency', v_type=int)
+        self.save_path = config_reader.get_param('checkpoints.save_path', v_type=Path)
+        self.log_path = config_reader.get_param('checkpoints.log_path', v_type=Path)
         # Hyperparameters
-        self.early_stop_patience = config_reader.get_param('early_stop_patience')
-        self.early_stop_min_improvement = config_reader.get_param('early_stop_patience')
+        self.early_stop_patience = config_reader.get_param('early_stopping.early_stop_patience', v_type=int)
+        self.early_stop_min_improvement = config_reader.get_param('early_stopping.early_stop_min_improvement',
+                                                                  v_type=float)
 
     @staticmethod
     def from_checkpoint(agent: Agent, env: Environment, checkpoint_file: str):
@@ -216,7 +217,7 @@ class AgentTrainer:
         self._fig, self._ax = plt.subplots(figsize=(10, 5))
 
         # Plot training returns
-        self._ax.plot(self.train_returns, label='Training Returns', alpha=0.6)
+        self._ax.plot(self.train_returns, label='Training Returns', alpha=0.6) # TODO problem w plot
 
         # Plot evaluation returns at correct episodes
         if self.eval_returns:
@@ -293,7 +294,7 @@ class AgentTrainer:
             episode_return = self._run_episode(training=True)
             self.train_returns.append(episode_return)
             if verbosity_level >= 3:
-                print(f"Episode {self.episode} completed with reward: {episode_return:.2f}")
+                print(f"Episode {self.episode} completed with reward: {float(episode_return):.2f}")
 
             # Periodic evaluation
             if self.episode % self.eval_frequency == 0:
@@ -376,7 +377,7 @@ class AgentTrainer:
         :param training: Whether to update the agent during the episode
         :return: Total reward accumulated during the episode
         """
-        state, _ = self.env.reset()
+        state = self.env.reset()
         self.agent.reset()
         episode_return = 0
 
@@ -398,7 +399,6 @@ class AgentTrainer:
 
             if done:
                 break
-
         return episode_return
 
     def _save_checkpoint(self) -> None:
@@ -417,7 +417,7 @@ class AgentTrainer:
 
         agent_path, env_path, state_path = AgentTrainer.get_checkpoint_paths(save_dir, self.episode)
         # Save agent
-        self.agent.save(str(agent_path))
+        self.agent.save(str(agent_path)) #TODO problem with checkpoint
         # Save environment
         self.env.save(str(env_path))
         # Save training state
@@ -438,4 +438,3 @@ class AgentTrainer:
             save_dir_path / "agents" / f"agent_ep{episode}.pt",
             save_dir_path / "environments" / f"agent_ep{episode}.pt",
             save_dir_path / "trainings" / f"agent_ep{episode}.pt")
-

@@ -1,8 +1,9 @@
 import abc
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
 
 import torch
 import torch.nn as nn
+
 
 class BaseNetwork(nn.Module, abc.ABC):
     """
@@ -46,12 +47,12 @@ class BaseNetwork(nn.Module, abc.ABC):
     """
 
     def __init__(self,
-                input_dim: int,
-                output_dim: int,
-                hidden_sizes: List[int],
-                activation: str = "ReLU",
-                device: torch.device = torch.device("gpu" if torch.cuda.is_available() else "cpu"),
-                name: Optional[str] = None):
+                 input_dim: int,
+                 output_dim: int,
+                 hidden_sizes: List[int],
+                 activation: str = "ReLU",
+                 device: torch.device = torch.device("gpu" if torch.cuda.is_available() else "cpu"),
+                 name: Optional[str] = None):
         super().__init__()
         self.device = device
         print(f"Using device: {self.device}")
@@ -70,12 +71,13 @@ class BaseNetwork(nn.Module, abc.ABC):
             'sigmoid': nn.Sigmoid,
             'leakyrelu': nn.LeakyReLU
         }
-        
+
         activation_lower = activation.lower()
         if activation_lower in activation_map:
             activation_fn = activation_map[activation_lower]
         else:
-            raise ValueError(f"Activation function {activation} not supported. Choose from: {list(activation_map.keys())}")
+            raise ValueError(
+                f"Activation function {activation} not supported. Choose from: {list(activation_map.keys())}")
 
         # Build hidden layers
         for size in hidden_sizes:
@@ -102,7 +104,7 @@ class BaseNetwork(nn.Module, abc.ABC):
         """
         pass
 
-    def save(self, path:str) -> None:
+    def save(self, path: str) -> None:
         """
         Save network parameters and configuration.
 
@@ -138,7 +140,7 @@ class BaseNetwork(nn.Module, abc.ABC):
                     f"Saved model configuration mismatch: {key} "
                     f"saved: {saved_config.get(key)} current: {current_config.get(key)}"
                 )
-            
+
         self.load_state_dict(checkpoint['state_dict'])
 
     def get_config(self) -> Dict[str, Any]:
@@ -154,7 +156,7 @@ class BaseNetwork(nn.Module, abc.ABC):
             "device": self.device,
             "name": self.name
         }
-    
+
     @property
     def num_parameters(self) -> int:
         """
@@ -163,7 +165,7 @@ class BaseNetwork(nn.Module, abc.ABC):
         :return: Total number of parameters
         """
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
-    
+
     def __str__(self) -> str:
         """String representation of the network architecture"""
         return (f"{self.name} Network:\n"

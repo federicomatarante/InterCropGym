@@ -117,7 +117,6 @@ class Environment:
         if isinstance(action, torch.Tensor):
             cpu = torch.device('cpu')
             action = action.to(cpu).numpy().astype(np.float32)
-
         observation, reward, done, truncated, info = self.env.step(action)
         if self.use_tensor:
             observation = torch.tensor(observation, dtype=torch.float32, device=self.device)
