@@ -83,8 +83,7 @@ class ConfigReader:
             if v_type is bool:
                 value = data.lower() == 'true'
             elif v_type is Path:
-
-                value = self.base_path / Path(data)
+                value = self.base_path / Path(data.replace('\\',"/"))
             else:
                 value = v_type(data)
 

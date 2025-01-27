@@ -12,7 +12,6 @@ from pcse.input.nasapower import NASAPowerWeatherDataProvider
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'env_data/')
 
-
 class FertilizationEnv(gym.Env):
     """An environment for OpenAI gym to study crop fertilization"""
     metadata = {'render.modes': ['human']}
@@ -253,3 +252,4 @@ class FertilizationEnv(gym.Env):
         weather_vars = ['IRRAD', 'TMIN', 'TMAX', 'VAP', 'RAIN']
         weather = [getattr(weatherdatacontainer, attr) for attr in weather_vars]
         return weather
+

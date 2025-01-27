@@ -6,7 +6,7 @@ import yaml
 import numpy as np
 
 
-data_dir = '../gym-crop/gym_crop/envs/env_data/'
+data_dir = '../gym_crop/gym_crop/envs/env_data/'
 crop = pcse.fileinput.PCSEFileReader(os.path.join(data_dir, "crop", "lintul3_winterwheat.crop"))
 soil = pcse.fileinput.PCSEFileReader(os.path.join(data_dir, "soil", "lintul3_springwheat.soil"))
 site = pcse.fileinput.PCSEFileReader(os.path.join(data_dir, "site", "lintul3_springwheat.site"))

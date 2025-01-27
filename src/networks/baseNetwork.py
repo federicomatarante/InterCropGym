@@ -51,7 +51,7 @@ class BaseNetwork(nn.Module, abc.ABC):
                  output_dim: int,
                  hidden_sizes: List[int],
                  activation: str = "ReLU",
-                 device: torch.device = torch.device("gpu" if torch.cuda.is_available() else "cpu"),
+                 device: torch.device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
                  name: Optional[str] = None):
         super().__init__()
         self.device = device
