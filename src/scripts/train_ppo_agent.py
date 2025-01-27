@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import torch
+from pcse.exceptions import WeatherDataProviderError
 
 from src.agents.PPOAgent import PPOAgent
 from src.enviroments.environment import Environment
@@ -60,7 +61,8 @@ def main():
     trainer.train(
         plot_progress=training_config_reader.get_param("debug.plot_progress", v_type=bool, default=True),
         verbosity=training_config_reader.get_param("debug.verbosity", v_type=str, default="INFO",
-                                                   domain={'INFO', 'DEBUG', 'WARNING', 'NONE'})
+                                                   domain={'INFO', 'DEBUG', 'WARNING', 'NONE'}),
+        allowed_exceptions=(WeatherDataProviderError,)
     )
 
 
