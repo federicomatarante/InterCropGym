@@ -6,7 +6,7 @@ import pandas as pd
 import pcse
 from pcse.input import PCSEFileReader
 
-from gym_crop import FertilizationEnv
+from gym_crop.envs import FertilizationEnv
 from src.enviroments.gymintercrop.utils.crop_state import CropState
 from src.enviroments.gymintercrop.utils.lintul3_parameters import LINTUL3Parameters
 
