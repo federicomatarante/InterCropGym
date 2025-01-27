@@ -1,3 +1,4 @@
+from importlib.metadata import distribution
 from typing import Dict, Any, Optional, Tuple
 import numpy as np
 import torch
@@ -73,6 +74,9 @@ class PPOAgent(Agent):
         buffer_size = int(config.get_param('training.buffer_size'))
         self.num_epochs = int(config.get_param('training.num_epochs'))
         self.batch_size = int(config.get_param('training.batch_size'))
+
+        # Buffer handling
+        self.minimum_required_samples = int(self.batch_size * 0.5) # threshold for buffer update
 
         # Initialize networks
         self.actor = ActorNetwork(
@@ -161,41 +165,26 @@ class PPOAgent(Agent):
             return metrics
         return {}
 
-    def update_networks(self, final_state: np.ndarray) -> Dict[str, float]:
+    def _perform_update(self, final_state: np.ndarray, current_batch_size: int) -> Dict[str, float]:
         """
-        Update actor and critic networks using PPO algorithm.
-        
-        :param final_state: Final state of episode, used for computing final value
-        :return: Dictionary of training metrics including:
-                - policy_loss: Average policy loss across updates
-                - value_loss: Average value function loss across updates
-                - entropy: Average entropy of policy distribution
-        """
-        # Check if buffer has enough data
-        if len(self.buffer) < self.batch_size:
-            print(
-                f"Warning: Not enough data in buffer (size: {len(self.buffer)}) for update with batch size {self.batch_size}.")
-            return {
-                'policy_loss': 0.0,
-                'value_loss': 0.0,
-                'entropy': 0.0
-            }
+        Performs a PPO update with the given batch size.
 
+        :param final_state: Final state of episode for value estimation
+        :param current_batch_size: Batch size to use for this update
+        :return: Dictionary containing update metrics
+        """
         data = self.buffer.get()
         total_policy_loss = 0
         total_value_loss = 0
         total_entropy = 0
         update_count = 0
 
-        # Perform multiple epochs of updates
         for _ in range(self.num_epochs):
-            # Generate random permutation for minibatches
             indices = torch.randperm(len(self.buffer))
 
-            # Update in minibatches
-            for start in range(0, len(self.buffer), self.batch_size):
-                end = min(start + self.batch_size, len(self.buffer))
-                if end - start < self.batch_size:  # skip last batch if too small
+            for start in range(0, len(self.buffer), current_batch_size):
+                end = min(start + current_batch_size, len(self.buffer))
+                if end - start < current_batch_size * 0.8:   # skip if batch size too small
                     continue
 
                 update_count += 1
@@ -210,10 +199,10 @@ class PPOAgent(Agent):
                 dones = data['dones'][batch_indices]
 
                 # Get current policy distribution and value estimates
-                distribution = self.actor.get_distribution(states)
+                action_distribution = self.actor.get_distribution(states)
                 values = self.critic(states)
-                log_probs = distribution.log_prob(actions)
-                entropy = distribution.entropy().mean()
+                log_probs = action_distribution.log_prob(actions)
+                entropy = action_distribution.entropy().mean()
 
                 # Calculate advantages and returns
                 with torch.no_grad():
@@ -236,7 +225,7 @@ class PPOAgent(Agent):
                 value_loss = ((returns - values) ** 2).mean()
 
                 # Calculate total loss
-                loss = (policy_loss + self.vf_coef * value_loss - self.ent_coef * entropy)
+                loss = policy_loss + self.vf_coef * value_loss - self.ent_coef * entropy
 
                 # Optimize
                 self.actor_optimizer.zero_grad()
@@ -254,22 +243,37 @@ class PPOAgent(Agent):
                 total_value_loss += value_loss.item()
                 total_entropy += entropy.item()
 
-        # Clear buffer after update
-        self.buffer.clear()
+            if update_count == 0:
+                return {
+                    'policy_loss': 0.0,
+                    'value_loss': 0.0,
+                    'entropy': 0.0,
+                    'batch_size_used': current_batch_size,
+                    'updates_performed': 0
+                }
 
-        # Return metrics (handle also case where no updates were performed)
-        if update_count == 0:
+            return {
+                'policy_loss': total_policy_loss / update_count,
+                'value_loss': total_value_loss / update_count,
+                'entropy': total_entropy / update_count,
+                'batch_size_used': current_batch_size,
+                'updates_performed': update_count
+            }
+
+    def update_networks(self, final_state: np.ndarray) -> Dict[str, float]:
+        if len(self.buffer) < self.minimum_required_samples:
             return {
                 'policy_loss': 0.0,
                 'value_loss': 0.0,
-                'entropy': 0.0
+                'entropy': 0.0,
+                'skipped_reason': 'insufficient_data',
+                'available_samples': len(self.buffer)
             }
 
-        return {
-            'policy_loss': total_policy_loss / update_count,
-            'value_loss': total_value_loss / update_count,
-            'entropy': total_entropy / update_count
-        }
+        adjusted_batch_size = min(self.batch_size, len(self.buffer))
+        metrics = self._perform_update(final_state, adjusted_batch_size)
+        self.buffer.clear()
+        return metrics
 
     def save(self, path: str) -> None:
         """
