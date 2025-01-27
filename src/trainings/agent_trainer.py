@@ -1,15 +1,22 @@
 import json
+import os
+import pickle
 from json import JSONDecodeError
 from typing import Dict, Any, Tuple
 from pathlib import Path
 import numpy as np
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from numpy import floating
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-
+import tkinter as tk
 from src.agents.agent import Agent
 from src.enviroments.environment import Environment
 from src.utils.configs.ini_config_reader import ConfigReader
+
+import matplotlib
+
+matplotlib.use('TkAgg')
 
 
 class AgentTrainer:
@@ -155,6 +162,8 @@ class AgentTrainer:
         # Plotting
         self._fig = None
         self._ax = None
+        self._root = None
+        self._canvas = None
 
     def _load_config(self, config_reader: ConfigReader) -> None:
         """Load and validate configuration from an INI file.
@@ -174,13 +183,20 @@ class AgentTrainer:
         self.save_frequency = config_reader.get_param('checkpoints.save_frequency', v_type=int)
         self.save_path = config_reader.get_param('checkpoints.save_path', v_type=Path)
         self.log_path = config_reader.get_param('checkpoints.log_path', v_type=Path)
+        os.makedirs(self.save_path, exist_ok=True)
+        os.makedirs(self.save_path / 'agents', exist_ok=True)
+        os.makedirs(self.save_path / 'environments', exist_ok=True)
+        os.makedirs(self.save_path / 'trainings', exist_ok=True)
+
+        os.makedirs(self.log_path, exist_ok=True)
+
         # Hyperparameters
         self.early_stop_patience = config_reader.get_param('early_stopping.early_stop_patience', v_type=int)
         self.early_stop_min_improvement = config_reader.get_param('early_stopping.early_stop_min_improvement',
                                                                   v_type=float)
 
     @staticmethod
-    def from_checkpoint(agent: Agent, env: Environment, checkpoint_file: str):
+    def from_checkpoint(agent: Agent, env: Environment, checkpoint_file: str): # TODO shoudl test this before definitive!
         """
         Creates an AgentTrainer instance from the given checkpoint.
         :param agent: the agent to use for the training. Careful! Load it before starting the training with proper  methods.
@@ -213,24 +229,32 @@ class AgentTrainer:
         Creates a figure showing the training returns and evaluation returns
         over episodes.
         """
-        plt.close('all')  # Close any existing figures
+        if self._root is None:
+            self._root = tk.Tk()
+            self._root.protocol('WM_DELETE_WINDOW', self._on_closing)
+
+        plt.close('all')
         self._fig, self._ax = plt.subplots(figsize=(10, 5))
 
         # Plot training returns
-        self._ax.plot(self.train_returns, label='Training Returns', alpha=0.6) # TODO problem w plot
+        self._ax.plot(self.train_returns, label='Training Returns', alpha=0.6)
 
-        # Plot evaluation returns at correct episodes
+        # Plot evaluation returns
         if self.eval_returns:
-            eval_episodes = range(0, len(self.eval_returns) * self.eval_frequency,
-                                  self.eval_frequency)
-            self._ax.plot(eval_episodes, self.eval_returns,
-                          label='Evaluation Returns', linewidth=2)
+            eval_episodes = range(0, len(self.eval_returns) * self.eval_frequency, self.eval_frequency)
+            self._ax.plot(eval_episodes, self.eval_returns, label='Evaluation Returns', linewidth=2)
 
         self._ax.set_xlabel('Episode')
         self._ax.set_ylabel('Return')
         self._ax.legend()
         self._ax.set_title('Training Progress')
-        plt.show()
+
+        if self._canvas is None:
+            self._canvas = FigureCanvasTkAgg(self._fig, master=self._root)
+            self._canvas.draw()
+            self._canvas.get_tk_widget().pack()
+
+        self._root.update()
 
     def _update_plot(self) -> None:
         """Update the live training plot.
@@ -245,28 +269,40 @@ class AgentTrainer:
             self._ax.plot(self.train_returns, label='Training Returns', alpha=0.6)
 
             if self.eval_returns:
-                eval_episodes = range(0, len(self.eval_returns) * self.eval_frequency,
-                                      self.eval_frequency)
-                self._ax.plot(eval_episodes, self.eval_returns,
-                              label='Evaluation Returns', linewidth=2)
+                eval_episodes = range(0, len(self.eval_returns) * self.eval_frequency, self.eval_frequency)
+                self._ax.plot(eval_episodes, self.eval_returns, label='Evaluation Returns', linewidth=2)
 
             self._ax.set_xlabel('Episode')
             self._ax.set_ylabel('Return')
             self._ax.legend()
             self._ax.set_title('Training Progress')
-            self._fig.canvas.draw()
-            plt.pause(0.01)  # Small pause to update the plot
 
-    def train(self, plot_progress: bool = False, verbosity: str = "INFO") -> Dict[str, list]:
+            if self._canvas:
+                self._canvas.draw()
+                self._root.update()
+
+    def _on_closing(self):
+        if self._root:
+            self._root.quit()
+            self._root.destroy()
+            self._root = None
+            self._canvas = None
+            self._fig = None
+            self._ax = None
+
+    def train(self, plot_progress: bool = False, verbosity: str = "INFO", allowed_exceptions: tuple = ()) -> Dict[
+        str, list]:
         """Train the agent using the specified configuration.
         Some features:
             - Periodic evaluation
             - Early stopping
             - Tracking of checkpoints
             - Configurable verbosity levels
+            - Exception handling for specified exceptions
 
         :param plot_progress: Whether to show and update a plot during training
         :param verbosity: Print verbosity level ('DEBUG', 'INFO', 'WARNING', 'NONE')
+        :param allowed_exceptions: Tuple of exception types that should be caught and ignored during training
         :return: Dictionary containing training metrics including:
                 - 'train_returns': List of returns from training episodes
                 - 'eval_returns': List of average returns from evaluation periods
@@ -288,50 +324,63 @@ class AgentTrainer:
         episodes_without_improvement = 0
 
         for self.episode in tqdm(range(self.train_episodes)):
-            # Training episode
-            if verbosity_level >= 3:
-                print(f"Starting episode {self.episode + 1}/{self.train_episodes}")
-            episode_return = self._run_episode(training=True)
-            self.train_returns.append(episode_return)
-            if verbosity_level >= 3:
-                print(f"Episode {self.episode} completed with reward: {float(episode_return):.2f}")
+            try:
 
-            # Periodic evaluation
-            if self.episode % self.eval_frequency == 0:
-                if verbosity_level >= 2:
-                    print(f"Running evaluation at episode {self.episode}")
-                eval_return = self.evaluate(self.eval_episodes)
-                self.eval_returns.append(eval_return)
-                if verbosity_level >= 2:
-                    print(f"Evaluation return: {eval_return:.2f}")
+                train_return_item, eval_return_item = None, None
+                # Training episode
+                if verbosity_level >= 3:
+                    print(f"Starting episode {self.episode + 1}/{self.train_episodes}")
+                episode_return = self._run_episode(training=True)
+                train_return_item = episode_return.item()
 
-                # Update plot if requested
-                if plot_progress:
-                    if verbosity_level >= 3:
-                        print("Updating training progress plot")
-                    self._update_plot()
+                if verbosity_level >= 3:
+                    print(f"Episode {self.episode} completed with reward: {float(episode_return):.2f}")
 
-                # Early stopping check
-                if eval_return > best_eval_return + self.early_stop_min_improvement:
-                    best_eval_return = eval_return
-                    episodes_without_improvement = 0
+                # Periodic evaluation
+                if self.episode % self.eval_frequency == 0:
                     if verbosity_level >= 2:
-                        print(f"New best evaluation return: {best_eval_return:.2f}")
-                else:
-                    episodes_without_improvement += 1
-                    if verbosity_level >= 3:
-                        print(f"Episodes without improvement: {episodes_without_improvement}")
+                        print(f"Running evaluation at episode {self.episode}")
+                    eval_return = self.evaluate(self.eval_episodes)
+                    eval_return_item = eval_return.item()
+                    if verbosity_level >= 2:
+                        print(f"Evaluation return: {eval_return:.2f}")
 
-                if episodes_without_improvement >= self.early_stop_patience:
-                    if verbosity_level >= 1:
-                        print(f"Early stopping triggered at episode {self.episode}")
-                    break
+                    # Update plot if requested
+                    if plot_progress:
+                        if verbosity_level >= 3:
+                            print("Updating training progress plot")
+                        self._update_plot()
 
-            # Save checkpoint
-            if self.episode % self.save_frequency == 0:
-                if verbosity_level >= 2:
-                    print(f"Saving checkpoint at episode {self.episode}")
-                self._save_checkpoint()
+                    # Early stopping check
+                    if eval_return > best_eval_return + self.early_stop_min_improvement:
+                        best_eval_return = eval_return
+                        episodes_without_improvement = 0
+                        if verbosity_level >= 2:
+                            print(f"New best evaluation return: {best_eval_return:.2f}")
+                    else:
+                        episodes_without_improvement += 1
+                        if verbosity_level >= 3:
+                            print(f"Episodes without improvement: {episodes_without_improvement}")
+
+                    if episodes_without_improvement >= self.early_stop_patience:
+                        if verbosity_level >= 1:
+                            print(f"Early stopping triggered at episode {self.episode}")
+                        break
+
+                # Save checkpoint
+                if self.episode % self.save_frequency == 0:
+                    if verbosity_level >= 2:
+                        print(f"Saving checkpoint at episode {self.episode}")
+                    self._save_checkpoint()
+
+            except allowed_exceptions as e:
+                if verbosity_level >= 1:
+                    print(f"Caught allowed exception in episode {self.episode}: {str(e)}")
+                continue
+            if train_return_item:
+                self.train_returns.append(train_return_item)
+            if eval_return_item:
+                self.eval_returns.append(eval_return_item)
 
         # Final plot update if plotting was enabled
         if plot_progress:
@@ -368,7 +417,7 @@ class AgentTrainer:
             episode_return = self._run_episode(training=False)
             if verbosity_level >= 3:
                 print(f"Reward of episode {i + 1}: {episode_return}")
-            eval_returns.append(episode_return)
+            eval_returns.append(episode_return.item())
         return np.mean(eval_returns)
 
     def _run_episode(self, training: bool = True) -> float:
@@ -417,12 +466,12 @@ class AgentTrainer:
 
         agent_path, env_path, state_path = AgentTrainer.get_checkpoint_paths(save_dir, self.episode)
         # Save agent
-        self.agent.save(str(agent_path)) #TODO problem with checkpoint
+        self.agent.save(str(agent_path))
         # Save environment
         self.env.save(str(env_path))
         # Save training state
-        with open(state_path, 'w') as f:
-            json.dump(checkpoint, f, indent=4)
+        with open(state_path, 'wb') as f:
+            pickle.dump(checkpoint, f)
 
     @staticmethod
     def get_checkpoint_paths(save_dir: str | Path, episode: int) -> Tuple[Path, Path, Path]:
