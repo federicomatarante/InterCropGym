@@ -262,6 +262,7 @@ class PPOAgent(Agent):
 
     def update_networks(self, final_state: np.ndarray) -> Dict[str, float]:
         if len(self.buffer) < self.minimum_required_samples:
+            print(f"Buffer check: {len(self.buffer)} samples available, {self.minimum_required_samples} required")
             return {
                 'policy_loss': 0.0,
                 'value_loss': 0.0,
