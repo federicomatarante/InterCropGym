@@ -161,6 +161,7 @@ class PPOAgent(Agent):
         """
 
         if done:
+            print(f"Episode ended with {len(self.buffer)} samples in buffer")
             metrics = self.update_networks(next_state)
             return metrics
         return {}
