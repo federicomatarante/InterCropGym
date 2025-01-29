@@ -50,7 +50,7 @@ def main():
         action_dim=1,
         max_val=env.action_space.n,
         config=ppo_config_reader,
-        device=torch.device('cpu')  # TODO change
+        device=torch.device('cuda')
     )
     trainer = AgentTrainer(
         agent=agent,
