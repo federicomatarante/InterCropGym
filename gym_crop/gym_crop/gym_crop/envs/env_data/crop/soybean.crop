@@ -1,60 +1,88 @@
-DLC = -99.0
-DLO = -99.0
-DTSMTB = 0.00, 0.00, 7.00, 0.00, 30.00, 23.00, 45.00, 38.00
-DVSDR = 1.0
-DVSEND = 2.0
-DVSI = 0.0
-DVSNLT = 1.5
-DVSNT = 0.8
-RNMIN = 0.52
-FLVTB = 0.00, 0.70, 1.00, 0.70, 1.15, 0.60, 1.30, 0.43, 1.50, 0.15, 2.00, 0.00
-FNTRT = 0.15
-FRNX = 1.00
-FRTRL = 0.28
-FRTTB = 0.00, 0.65, 0.75, 0.35, 1.00, 0.15, 1.50, 0.00, 2.00, 0.00
-FSOTB = 0.00, 0.00, 1.00, 0.00, 1.15, 0.15, 1.30, 0.47, 1.50, 0.75, 2.00, 1.00
-FSTTB = 0.00, 0.30, 1.00, 0.30, 1.15, 0.25, 1.30, 0.10, 1.50, 0.10, 2.00, 0.00
-IDSL = 0
-K = 0.80
-LAICR = 23.
-LRNR = 0.50
-LSNR = 0.50
-LUE = 2.8
-NFRLVI = 0.060
-NFRRTI = 0.020
-NFRSTI = 0.020
-NLAI = 1.0
-NLUE = 1.1
-NMAXSO = 0.0560
-NMXLV = 0.0, 0.060, 0.4, 0.040, 0.7, 0.035, 1.0, 0.030, 2.0, 0.0293, 2.1, 0.0293
-NPART = 1.0
-NSLA = 0.5
-RDRNS = 0.05
-RDRRT = 0.030
-RDRSHM = 0.030
-RDRT = -10., 0.00, 10., 0.02, 15., 0.03, 30., 0.05, 50., 0.09
-RGRL = 0.0100
-RNFLV = 0.00933
-RNFRT = 0.00467
-RNFST = 0.00467
-ROOTDI = 10.
-ROOTDM = 120.
-RRDMAX = 0.013
-SLAC = 0.022
-SLACF = 0.0, 1.0, 2.0, 1.0
-TBASE = 7.0
-TBASEM = 7.0
-TCNT = 10.0
-TEFFMX = 22.0
-TRANCO = 8.0
-TSUM1 = 350.0
-TSUM2 = 950.0
-TSUMAG = 350.0
-TSUMEM = 70.0
-WLVGI = 2.8
-WRTLI = 3.2
-WSOI = 0.0
-WSTI = 0.0
-FRTRL = 0.28
-RTMIN = 0.032
-TNSOILI = 7.8
+DLC = 0             # Development stage at which crop death ends
+DLO = 0             # Development stage at which crop death starts
+DTSMTB = 0.0, 0.0, 30.0, 30.0  # Daily temperature sum (base temperature) for soybean
+DVSDR = 1.0         # Development stage at which death of roots starts
+DVSEND = 2.0        # Development stage at which crop growth ends
+DVSI = 0            # Initial development stage
+DVSNLT = 2.0        # Development stage after which no nutrients are taken up
+DVSNT = 1.0         # Development stage at which nutrient uptake stops
+RNMIN = 0.5         # Minimum N concentration in roots as fraction of maximum N concentration
+
+# Partitioning tables for soybean - verified to sum to 1.0 at all stages
+FLVTB = 0.0, 0.45, 0.25, 0.40, 0.50, 0.35, 0.75, 0.25, 1.0, 0.15, 1.5, 0.10, 2.0, 0.0  # Leaves
+FRTTB = 0.0, 0.35, 0.25, 0.25, 0.50, 0.20, 0.75, 0.15, 1.0, 0.10, 1.5, 0.05, 2.0, 0.0  # Roots
+FSTTB = 0.0, 0.20, 0.25, 0.20, 0.50, 0.20, 0.75, 0.15, 1.0, 0.15, 1.5, 0.05, 2.0, 0.0  # Stem
+FSOTB = 0.0, 0.00, 0.25, 0.15, 0.50, 0.25, 0.75, 0.45, 1.0, 0.60, 1.5, 0.80, 2.0, 1.0  # Storage organs
+
+# N-related parameters
+FNTRT = 0.20        # Fraction N translocation from roots (adjusted for N-fixing capability)
+FRNX = 0.65         # Optimal N fraction in storage organs
+FRTRL = 0.25        # Fraction to roots (adjusted for N-fixing needs)
+
+# Growth parameters
+IDSL = 0            # Switch for drought stress on leaf death
+K = 0.65            # Light extinction coefficient for soybean canopy
+LAICR = 5.0         # Critical LAI above which death due to self-shading occurs
+LRNR = 0.6          # Maximum N concentration in roots
+LSNR = 0.5          # Maximum N concentration in stems
+LUE = 2.5           # Light use efficiency for soybean
+
+# Nitrogen concentrations
+NFRLVI = 0.065      # Initial N fraction in leaves
+NFRRTI = 0.040      # Initial N fraction in roots (higher for nodulation)
+NFRSTI = 0.030      # Initial N fraction in stems
+NLAI = 1.0          # Coefficient for N effect on leaf area development
+NLUE = 0.2          # Coefficient for N effect on light use efficiency
+NMAXSO = 0.065      # Maximum N concentration in storage organs
+
+# Maximum N concentration in leaves over development
+NMXLV = 0.0, 0.065, 0.5, 0.060, 1.0, 0.055, 1.5, 0.050, 2.0, 0.045
+
+# Stress and development parameters
+NPART = 1.0         # Coefficient for N stress effect on leaf death
+NSLA = 0.0          # Coefficient for N stress effect on specific leaf area
+RDRNS = 0.03        # Maximum relative death rate due to N stress
+RDRRT = 0.03        # Maximum relative death rate of roots
+RDRSHM = 0.03       # Maximum relative death rate due to shading
+
+# Temperature response
+RDRT = -10.0, 0.0, 10.0, 0.02, 25.0, 0.03, 35.0, 0.06, 45.0, 0.09
+
+# Growth and development rates
+RGRL = 0.012        # Relative growth rate of leaf area
+RNFLV = 0.010       # Residual N fraction in leaves
+RNFRT = 0.003       # Residual N fraction in roots
+RNFST = 0.003       # Residual N fraction in stems
+
+# Root parameters
+ROOTDI = 0.1        # Initial rooting depth
+ROOTDM = 1.5        # Maximum rooting depth
+RRDMAX = 0.015      # Maximum daily increase in rooting depth
+
+# Leaf parameters
+SLAC = 0.025        # Specific leaf area constant
+SLACF = 0.0, 1.0, 2.0, 1.0, 2.1, 1.0  # Leaf area correction function
+
+# Temperature parameters
+TBASE = 8.0         # Base temperature for development
+TBASEM = 8.0        # Base temperature for maintenance respiration
+TCNT = 10           # Time constant for N translocation
+TEFFMX = 32.0       # Maximum effective temperature
+TRANCO = 8.0        # Maximum transpiration rate
+
+# Development stage parameters
+TSUM1 = 750         # Temperature sum from emergence to flowering
+TSUM2 = 850         # Temperature sum from flowering to maturity
+TSUMAG = 750        # Temperature sum from emergence to grain filling
+TSUMEM = 80         # Temperature sum from sowing to emergence
+
+# Initial biomass - balanced between organs
+WLVGI = 0.05        # Initial leaf weight
+WRTLI = 0.05        # Initial root weight
+WSOI = 0.00         # Initial storage organ weight
+WSTI = 0.02         # Initial stem weight
+
+# Root allocation and soil parameters
+FRTRL = 0.25        # Fraction to roots
+RTMIN = 0.03        # Minimum rooting depth
+TNSOILI = 7.7       # Initial soil N
