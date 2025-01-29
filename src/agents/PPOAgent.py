@@ -3,6 +3,7 @@ from typing import Dict, Any, Optional, Tuple
 import numpy as np
 import torch
 import torch.optim as optim
+from pandas.io.stata import stata_epoch
 
 from src.agents.agent import Agent
 from src.buffers.ppo_buffer import PPOBuffer
@@ -106,60 +107,54 @@ class PPOAgent(Agent):
             device=device
         )
 
-    def act(self, state: np.ndarray, reward: Optional[float] = None, done: Optional[bool] = None,
-            explore: bool = True) -> np.ndarray:
+    def act(self, state: np.ndarray, explore: bool = True) -> np.ndarray:
         """
-        Select an action given the current state and optionally store transition in buffer.
+        Select an action given the current state.
         
         :param state: Current environment state
-        :param reward: Reward from previous action (if not first step)
-        :param done: Whether previous step terminated the episode
         :param explore: Whether to explore (ignored in PPO as it always samples from policy)
-        :return: Tuple of (action, value, log_prob) as numpy arrays, where:
-                - action is the selected action
-                - value is the critic's value estimate
-                - log_prob is the log probability of the selected action
+        :return: Selected action as numpy array
         """
         state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
-            action, log_prob = self.actor.get_action_and_log_prob(state_tensor)
-            value = self.critic(state_tensor)
-
-            if reward is not None and done is not None:
-                # Convert scalar actions to numpy array for storage
-                action_array = np.array([action]) if isinstance(action, (int, float)) else action.cpu().numpy()
-                self.buffer.store(
-                    state=state,
-                    action=action_array,
-                    reward=reward,
-                    value=value.cpu().numpy(),
-                    log_prob=log_prob.cpu().numpy(),
-                    done=done
-                )
-
-            # Prepare outputs: 
-            # - IF action is already scalar (discrete case), return as is
-            # - IF action is tensor (continuous case), convert to numpy array
+            action, _ = self.actor.get_action_and_log_prob(state_tensor)
             action_out = action if isinstance(action, (int, float)) else action.cpu().numpy()
-            value_out = value.cpu().numpy()
-            log_prob_out = log_prob.cpu().numpy()
-            # return action,value,log_prob_out #TODO Serve a qualcosa ritornare questi valori?
             return action_out
 
     def update(self, state: np.ndarray, action: np.ndarray, reward: float, next_state: np.ndarray, done: bool) -> Dict[
         str, float]:
         """
-        Check if episode is done and update networks.
+        Store transition in buffer and update networks if episode is done.
         
-        :param state: Current state (unused in PPO)
-        :param action: Action taken (unused in PPO)
-        :param reward: Reward received (unused in PPO)
-        :param next_state: Next state (used for computing final values)
+        :param state: Current state
+        :param action: Action taken
+        :param reward: Reward received
+        :param next_state: Next state
         :param done: Whether episode terminated
         :return: Dictionary of training metrics if update performed, empty dict otherwise
         """
+        # Store the transition inside the buffer
+        with torch.no_grad():
+            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+            value = self.critic(state_tensor)
+            # Convert action to tensor for log prob calculation
+            action_tensor = torch.FloatTensor([action]) if isinstance(action, (int, float)) else torch.FloatTensor(action)
+            action_tensor = action_tensor.to(self.device)
+            _, log_prob = self.actor.get_action_and_log_prob(state_tensor)
+            log_prob = log_prob.cpu().numpy().item()
 
+            # Store transition in buffer
+            self.buffer.store(
+                state=state,
+                action=action,
+                reward=reward,
+                value=value.cpu().numpy().item(),
+                log_prob=log_prob,
+                done=done
+            )
+
+        # If episode is done perform PPO update
         if done:
             print(f"Episode ended with {len(self.buffer)} samples in buffer")
             metrics = self.update_networks(next_state)
@@ -263,7 +258,6 @@ class PPOAgent(Agent):
 
     def update_networks(self, final_state: np.ndarray) -> Dict[str, float]:
         if len(self.buffer) < self.minimum_required_samples:
-            print(f"Buffer check: {len(self.buffer)} samples available, {self.minimum_required_samples} required")
             return {
                 'policy_loss': 0.0,
                 'value_loss': 0.0,

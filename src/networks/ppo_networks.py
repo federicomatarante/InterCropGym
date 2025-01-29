@@ -69,14 +69,18 @@ class ActorNetwork(BaseNetwork):
 
     def get_action_and_log_prob(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Sample action and get its log probability.
+        Sample action and get its log probability using categorical distribution.
         
         :param state: State tensor
-        :return: Tuple of (action, log_prob) tensors
+        :return: Tuple of (sampled_action, log_probability)
         """
         logits = self(state)
-        action = self.act(logits)
-        log_prob = -torch.nn.functional.binary_cross_entropy_with_logits(logits, action / self.act.max_val)
+        # Get distribution
+        dist = self.get_distribution(state)
+        # Sample action
+        action = dist.sample()
+        # Get log prob of the sampled action
+        log_prob = dist.log_prob(action)
         return action, log_prob
 
     def get_config(self) -> Dict[str, Any]:

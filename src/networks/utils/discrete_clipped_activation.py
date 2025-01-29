@@ -1,3 +1,4 @@
+import functorch.dim
 import torch
 import torch.nn as nn
 
@@ -8,8 +9,9 @@ class DiscreteParameterizedActivation(nn.Module):
         self.max_val = max_val
 
     def forward(self, x):
-        # Use sigmoid to get values between 0 and 1, then multiply and round
-        return torch.round(self.max_val * torch.sigmoid(x))
+        # Instead of sigmoid lets use softmax and sample
+        probs = nn.functional.softmax(x, dim=-1)
+        return torch.multinomial(probs, 1).squeeze(-1)
 
     def extra_repr(self):
         return f'max_val={self.max_val}'
