@@ -311,11 +311,11 @@ class AgentTrainer:
         # Set verbosity level
         verbosity = verbosity.upper()
         verbosity_levels = {"DEBUG": 3, "INFO": 2, "WARNING": 1, 'NONE': 0}
-        verbosity_level = verbosity_levels.get(verbosity, 0)  # Default to NONE
+        self.verbosity_level = verbosity_levels.get(verbosity, 0)  # Default to NONE
 
-        if verbosity_level >= 2:
+        if self.verbosity_level >= 2:
             print(f"Starting training with {self.train_episodes} episodes")
-        if verbosity_level >= 3:
+        if self.verbosity_level >= 3:
             print(f"Configuration - Eval frequency: {self.eval_frequency}, "
                   f"Early stop patience: {self.early_stop_patience}, "
                   f"Save frequency: {self.save_frequency}")
@@ -328,26 +328,26 @@ class AgentTrainer:
 
                 train_return_item, eval_return_item = None, None
                 # Training episode
-                if verbosity_level >= 3:
+                if self.verbosity_level >= 3:
                     print(f"Starting episode {self.episode + 1}/{self.train_episodes}")
                 episode_return = self._run_episode(training=True)
                 train_return_item = episode_return.item()
 
-                if verbosity_level >= 3:
+                if self.verbosity_level >= 3:
                     print(f"Episode {self.episode} completed with reward: {float(episode_return):.2f}")
 
                 # Periodic evaluation
                 if self.episode % self.eval_frequency == 0:
-                    if verbosity_level >= 2:
+                    if self.verbosity_level >= 2:
                         print(f"Running evaluation at episode {self.episode}")
                     eval_return = self.evaluate(self.eval_episodes)
                     eval_return_item = eval_return.item()
-                    if verbosity_level >= 2:
+                    if self.verbosity_level >= 2:
                         print(f"Evaluation return: {eval_return:.2f}")
 
                     # Update plot if requested
                     if plot_progress:
-                        if verbosity_level >= 3:
+                        if self.verbosity_level >= 3:
                             print("Updating training progress plot")
                         self._update_plot()
 
@@ -355,26 +355,26 @@ class AgentTrainer:
                     if eval_return > best_eval_return + self.early_stop_min_improvement:
                         best_eval_return = eval_return
                         episodes_without_improvement = 0
-                        if verbosity_level >= 2:
+                        if self.verbosity_level >= 2:
                             print(f"New best evaluation return: {best_eval_return:.2f}")
                     else:
                         episodes_without_improvement += 1
-                        if verbosity_level >= 3:
+                        if self.verbosity_level >= 3:
                             print(f"Episodes without improvement: {episodes_without_improvement}")
 
                     if episodes_without_improvement >= self.early_stop_patience:
-                        if verbosity_level >= 1:
+                        if self.verbosity_level >= 1:
                             print(f"Early stopping triggered at episode {self.episode}")
                         break
 
                 # Save checkpoint
                 if self.episode % self.save_frequency == 0:
-                    if verbosity_level >= 2:
+                    if self.verbosity_level >= 2:
                         print(f"Saving checkpoint at episode {self.episode}")
                     self._save_checkpoint()
 
             except allowed_exceptions as e:
-                if verbosity_level >= 1:
+                if self.verbosity_level >= 1:
                     print(f"Caught allowed exception in episode {self.episode}: {str(e)}")
                 continue
             if train_return_item:
@@ -384,14 +384,14 @@ class AgentTrainer:
 
         # Final plot update if plotting was enabled
         if plot_progress:
-            if verbosity_level >= 3:
+            if self.verbosity_level >= 3:
                 print("Updating final training progress plot")
             self._update_plot()
 
-        if verbosity_level >= 2:
+        if self.verbosity_level >= 2:
             print("Training completed")
             print(f"Final training steps: {self.train_steps}")
-        if verbosity_level >= 3:
+        if self.verbosity_level >= 3:
             print(f"Final training returns: {self.train_returns[-1]:.2f}")
             print(f"Final evaluation returns: {self.eval_returns[-1]:.2f}")
 
@@ -409,13 +409,13 @@ class AgentTrainer:
         :return: Average return across all evaluation episodes
         """
         verbosity_levels = {"DEBUG": 3, "INFO": 2, "WARNING": 1, 'NONE': 0}
-        verbosity_level = verbosity_levels.get(verbosity, 0)
+        self.verbosity_level = verbosity_levels.get(verbosity, 0)
         eval_returns = []
         for i in range(num_episodes):
-            if verbosity_level >= 3:
+            if self.verbosity_level >= 3:
                 print(f"Starting episode {i + 1}/{num_episodes}")
             episode_return = self._run_episode(training=False)
-            if verbosity_level >= 3:
+            if self.verbosity_level >= 3:
                 print(f"Reward of episode {i + 1}: {episode_return}")
             eval_returns.append(episode_return.item())
         return np.mean(eval_returns)
@@ -440,8 +440,15 @@ class AgentTrainer:
 
             # Update agent if training
             if training:
-                self.agent.update(state, action, reward, next_state, done)
+                metrics = self.agent.update(state, action, reward, next_state, done)
                 self.train_steps += 1
+                if metrics and self.verbosity_level >=2:
+                    print("\nTraining metrics")
+                    for key, value in metrics.items():
+                        if isinstance(value, (int, float)):
+                            print(f"{key}: {value:.4f}")
+                        else:
+                            print(f"{key}: {value}")
 
             episode_return += reward
             state = next_state

@@ -174,6 +174,10 @@ class PPOAgent(Agent):
         total_value_loss = 0
         total_entropy = 0
         update_count = 0
+        total_value_mean = 0
+        total_value_std = 0
+        total_advantage_mean = 0
+        total_advantage_std = 0
 
         for _ in range(self.num_epochs):
             indices = torch.randperm(len(self.buffer))
@@ -211,6 +215,12 @@ class PPOAgent(Agent):
                     advantages = rewards + self.gamma * next_values * (1 - dones.float()) - values
                     returns = advantages + values
 
+                    # Track advantage statistics
+                    total_advantage_mean += advantages.mean().item()
+                    total_advantage_std += advantages.std().item()
+                    total_value_mean += values.mean().item()
+                    total_value_std += values.std().item()
+
                 # Calculate policy loss with clipping
                 ratio = torch.exp(log_probs - old_log_probs)
                 policy_loss_1 = ratio * advantages
@@ -245,7 +255,12 @@ class PPOAgent(Agent):
                     'value_loss': 0.0,
                     'entropy': 0.0,
                     'batch_size_used': current_batch_size,
-                    'updates_performed': 0
+                    'updates_performed': 0,
+                    'value_mean': 0.0,
+                    'value_std': 0.0,
+                    'advantage_mean': 0.0,
+                    'advantage_std': 0.0,
+                    'learning_rate': self.actor_optimizer.param_groups[0]['lr']
                 }
 
             return {
@@ -253,7 +268,12 @@ class PPOAgent(Agent):
                 'value_loss': total_value_loss / update_count,
                 'entropy': total_entropy / update_count,
                 'batch_size_used': current_batch_size,
-                'updates_performed': update_count
+                'updates_performed': update_count,
+                'value_mean': total_value_mean / update_count,
+                'value_std': total_value_std / update_count,
+                'advantage_mean': total_value_mean / update_count,
+                'advantage_std': total_advantage_std / update_count,
+                'learning_rate': self.actor_optimizer.param_groups[0]['lr']
             }
 
     def update_networks(self, final_state: np.ndarray) -> Dict[str, float]:
