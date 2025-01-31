@@ -114,3 +114,20 @@ class PPOBuffer:
         :return: Number of transitions stored
         """
         return self.ptr
+
+    def compute_gae(self, rewards: np.ndarray, values: np.ndarray, dones: np.ndarray, next_value: float,
+                    gamma: float = 0.99, gae_lambda: float = 0.95) -> np.ndarray:
+        advantages = np.zeros_like(rewards)
+        last_gae = 0
+
+        for t in reversed(range(len(rewards))):
+            if t == len(rewards) - 1:
+                next_val = next_value
+            else:
+                next_val = values[t + 1]
+
+            delta = rewards[t] + gamma * next_val * (1 - dones[t]) - values[t]
+            advantages[t] = last_gae = delta + gamma * gae_lambda * (1 - dones[t]) * last_gae
+
+        returns = advantages + values
+        return advantages, returns

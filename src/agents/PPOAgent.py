@@ -212,8 +212,15 @@ class PPOAgent(Agent):
                     next_values[-1] = final_value
 
                     # Calculate advantages
-                    advantages = rewards + self.gamma * next_values * (1 - dones.float()) - values
-                    returns = advantages + values
+                    advantages, returns = self.buffer.compute_gae(
+                        rewards=rewards.cpu().numpy(),
+                        values=values.cpu().numpy(),
+                        dones=dones.cpu().numpy(),
+                        next_value=final_value.item(),
+                        gamma=self.gamma
+                    )
+                    advantages = torch.FloatTensor(advantages).to(self.device)
+                    returns = torch.FloatTensor(returns).to(self.device)
 
                     # Track advantage statistics
                     total_advantage_mean += advantages.mean().item()
