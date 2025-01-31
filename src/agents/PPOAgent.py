@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from pandas.io.stata import stata_epoch
+from sympy.physics.quantum.density import entropy
 
 from src.agents.agent import Agent
 from src.buffers.ppo_buffer import PPOBuffer
@@ -77,7 +78,7 @@ class PPOAgent(Agent):
         self.batch_size = int(config.get_param('training.batch_size'))
 
         # Buffer handling
-        self.minimum_required_samples = int(self.batch_size * 0.5) # threshold for buffer update
+        self.minimum_required_samples = int(self.batch_size * 2) # threshold for buffer update
 
         # Initialize networks
         self.actor = ActorNetwork(
@@ -155,7 +156,7 @@ class PPOAgent(Agent):
             )
 
         # If episode is done perform PPO update
-        if done:
+        if done and len(self.buffer) >= self.minimum_required_samples:
             print(f"Episode ended with {len(self.buffer)} samples in buffer")
             metrics = self.update_networks(next_state)
             return metrics
@@ -203,6 +204,9 @@ class PPOAgent(Agent):
                 values = self.critic(states)
                 log_probs = action_distribution.log_prob(actions)
                 entropy = action_distribution.entropy().mean()
+                # probs_manual = action_distribution.probs # TODO remove these lines when entropy manual not needed anymore
+                # entropy_manual = -torch.sum(probs_manual * torch.log(probs_manual + 1e-8), dim=-1).mean()
+                # print(entropy_manual)
 
                 # Calculate advantages and returns
                 with torch.no_grad():

@@ -1,7 +1,9 @@
 from typing import Tuple, Dict, Any
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
+from sympy.physics.units import temperature
 from torch.distributions import Categorical
 
 from src.networks.baseNetwork import BaseNetwork
@@ -37,7 +39,7 @@ class ActorNetwork(BaseNetwork):
 
     def __init__(self, input_dim: int, action_dim: int, max_val: int, **kwargs):
         super().__init__(input_dim=input_dim,
-                         output_dim=action_dim,
+                         output_dim=max_val,
                          name='DiscreteActor',
                          **kwargs)
 
@@ -45,6 +47,13 @@ class ActorNetwork(BaseNetwork):
         self.act = DiscreteParameterizedActivation(
             max_val=max_val
         )
+        self._init_weights()
+
+    def _init_weights(self):
+        for m in self.network.modules():
+            if isinstance(m, nn.Linear):
+                torch.nn.init.orthogonal_(m.weight, gain=0.001)
+                torch.nn.init.zeros_(m.bias)
 
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         """
@@ -63,8 +72,10 @@ class ActorNetwork(BaseNetwork):
         :return: Categorical distribution over actions
         """
         logits = self(state)
+
         # Convert logits to probabilities using softmax
         probs = F.softmax(logits, dim=-1)
+
         return Categorical(probs)
 
     def get_action_and_log_prob(self, state: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:

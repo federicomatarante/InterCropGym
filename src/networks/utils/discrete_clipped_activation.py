@@ -9,9 +9,7 @@ class DiscreteParameterizedActivation(nn.Module):
         self.max_val = max_val
 
     def forward(self, x):
-        # Instead of sigmoid lets use softmax and sample
-        probs = nn.functional.softmax(x, dim=-1)
-        return torch.multinomial(probs, 1).squeeze(-1)
+        return x
 
     def extra_repr(self):
         return f'max_val={self.max_val}'
