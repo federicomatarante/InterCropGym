@@ -101,6 +101,10 @@ class PPOAgent(Agent):
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=lr)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=lr)
 
+        # Scheduler
+        self.actor_scheduler = optim.lr_scheduler.StepLR(self.actor_optimizer, step_size=100, gamma=0.5)
+        self.critic_scheduler = optim.lr_scheduler.StepLR(self.critic_optimizer, step_size=100, gamma=0.5)
+
         # Initialize buffer
         self.buffer = PPOBuffer(
             size=buffer_size,
@@ -299,6 +303,8 @@ class PPOAgent(Agent):
 
         adjusted_batch_size = min(self.batch_size, len(self.buffer))
         metrics = self._perform_update(final_state, adjusted_batch_size)
+        self.actor_scheduler.step()
+        self.critic_scheduler.step()
         self.buffer.clear()
         return metrics
 

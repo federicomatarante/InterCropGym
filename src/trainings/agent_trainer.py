@@ -471,6 +471,12 @@ class AgentTrainer:
             'config': self.config_data
         }
 
+        if hasattr(self.agent, 'actor_scheduler') and hasattr(self.agent, 'critic_scheduler'):
+            checkpoint.update({
+                'actor_scheduler': self.agent.actor_scheduler.state_dict(),
+                'critic_scheduler': self.agent.critic_scheduler.state_dict()
+            })
+
         agent_path, env_path, state_path = AgentTrainer.get_checkpoint_paths(save_dir, self.episode)
         # Save agent
         self.agent.save(str(agent_path))
