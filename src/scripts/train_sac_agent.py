@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-import torch
 from pcse.exceptions import WeatherDataProviderError
 
 from src.agents.sac_agent import SACAgent

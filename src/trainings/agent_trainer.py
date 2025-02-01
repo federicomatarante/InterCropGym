@@ -442,7 +442,7 @@ class AgentTrainer:
             if training:
                 metrics = self.agent.update(state, action, reward, next_state, done)
                 self.train_steps += 1
-                if metrics and self.verbosity_level >=2:
+                if metrics and self.verbosity_level >=3:
                     print("\nTraining metrics")
                     for key, value in metrics.items():
                         if isinstance(value, (int, float)):
