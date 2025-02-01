@@ -340,7 +340,7 @@ class AgentTrainer:
                 if self.episode % self.eval_frequency == 0:
                     if self.verbosity_level >= 2:
                         print(f"Running evaluation at episode {self.episode}")
-                    eval_return = self.evaluate(self.eval_episodes)
+                    eval_return = self.evaluate(self.eval_episodes,verbosity)
                     eval_return_item = eval_return.item()
                     if self.verbosity_level >= 2:
                         print(f"Evaluation return: {eval_return:.2f}")
