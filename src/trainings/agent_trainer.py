@@ -333,7 +333,7 @@ class AgentTrainer:
                 episode_return = self._run_episode(training=True)
                 train_return_item = episode_return.item()
 
-                if self.verbosity_level >= 3:
+                if self.verbosity_level >= 2:
                     print(f"Episode {self.episode} completed with reward: {float(episode_return):.2f}")
 
                 # Periodic evaluation
@@ -442,7 +442,7 @@ class AgentTrainer:
             if training:
                 metrics = self.agent.update(state, action, reward, next_state, done)
                 self.train_steps += 1
-                if metrics and self.verbosity_level >=3:
+                if metrics and self.verbosity_level >=2:
                     print("\nTraining metrics")
                     for key, value in metrics.items():
                         if isinstance(value, (int, float)):
