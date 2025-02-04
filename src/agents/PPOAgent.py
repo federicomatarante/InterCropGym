@@ -101,6 +101,10 @@ class PPOAgent(Agent):
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=lr)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=lr)
 
+        # Scheduler
+        self.actor_scheduler = optim.lr_scheduler.StepLR(self.actor_optimizer, step_size=500, gamma=0.7)
+        self.critic_scheduler = optim.lr_scheduler.StepLR(self.critic_optimizer, step_size=500, gamma=0.7)
+
         # Initialize buffer
         self.buffer = PPOBuffer(
             size=buffer_size,
@@ -196,7 +200,7 @@ class PPOAgent(Agent):
                 actions = data['actions'][batch_indices]
                 old_values = data['values'][batch_indices]
                 old_log_probs = data['log_probs'][batch_indices]
-                rewards = data['rewards'][batch_indices]
+                rewards = data['normalized_rewards'][batch_indices]
                 dones = data['dones'][batch_indices]
 
                 # Get current policy distribution and value estimates
@@ -299,6 +303,8 @@ class PPOAgent(Agent):
 
         adjusted_batch_size = min(self.batch_size, len(self.buffer))
         metrics = self._perform_update(final_state, adjusted_batch_size)
+        self.actor_scheduler.step()
+        self.critic_scheduler.step()
         self.buffer.clear()
         return metrics
 

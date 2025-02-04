@@ -41,13 +41,30 @@ class PPOBuffer:
         # Core storage
         self.states = np.zeros((size, state_dim), dtype=np.float32)
         self.actions = np.zeros(size, dtype=np.int32)               # Discrete actions
-        self.rewards = np.zeros(size, dtype=np.float32)
         self.values = np.zeros(size, dtype=np.float32)
         self.log_probs = np.zeros(size, dtype=np.float32)
         self.dones = np.zeros(size, dtype=np.bool_)
+        self.raw_rewards = np.zeros(size, dtype=np.float32)
+        self.normalized_rewards = np.zeros(size, dtype=np.float32)
         
         self.size = size
         self.ptr = 0             # Current insertion pointer
+        self.reward_mean = 0
+        self.reward_std = 1
+        self.reward_count = 0
+        self.epsilon = 1e-8
+        self.reward_var = 0
+
+    def update_reward_stats(self, reward: float):
+        self.reward_count += 1
+        delta = reward - self.reward_mean
+        self.reward_mean += delta / self.reward_count
+        self.reward_var = (self.reward_var * (self.reward_count - 1) + delta ** 2) / self.reward_count
+        self.reward_std = np.sqrt(self.reward_var + 1e-8)
+
+    def normalize_reward(self, reward: float) -> float:
+        normalized = (reward - self.reward_mean) / (self.reward_std + self.epsilon)
+        return np.clip(normalized, -10.0, 10.0)
 
     def store(self, state: np.ndarray, action: int, reward: float, value: float, log_prob: float, done: bool) -> None:
         """
@@ -63,23 +80,18 @@ class PPOBuffer:
         """
         if self.ptr >= self.size:
             raise ValueError("Buffer is full. Call get() and clear() before adding more.")
-        
+
+        self.update_reward_stats(reward)
+        self.raw_rewards[self.ptr] = reward
+        self.normalized_rewards[self.ptr] = self.normalize_reward(reward)
+
         self.states[self.ptr] = state
         self.actions[self.ptr] = action
-        self.rewards[self.ptr] = reward
         self.values[self.ptr] = value
         self.log_probs[self.ptr] = log_prob
         self.dones[self.ptr] = done
 
         self.ptr += 1
-
-    # def finish_path(self, last_value: float) -> None:
-    #     """
-    #     Compute returns and advantages for a trajectory when episode terminates.
-
-    #     :param last_value: Value estimate for the last state (for bootstraping)
-    #     """
-    #     pass # Implement when needed GAE
 
     def clear(self) -> None:
         """Clear the buffer."""
@@ -99,7 +111,8 @@ class PPOBuffer:
         data = dict(
             states=torch.as_tensor(self.states[:self.ptr], device=self.device),
             actions=torch.as_tensor(self.actions[:self.ptr], device=self.device),
-            rewards=torch.as_tensor(self.rewards[:self.ptr], device=self.device),
+            normalized_rewards=torch.as_tensor(self.normalized_rewards[:self.ptr], device=self.device),
+            raw_rewards=torch.as_tensor(self.raw_rewards[:self.ptr], device=self.device),
             values=torch.as_tensor(self.values[:self.ptr], device=self.device),
             log_probs=torch.as_tensor(self.log_probs[:self.ptr], device=self.device),
             dones=torch.as_tensor(self.dones[:self.ptr], device=self.device)
