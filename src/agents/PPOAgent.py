@@ -9,6 +9,7 @@ from sympy.physics.quantum.density import entropy
 from src.agents.agent import Agent
 from src.buffers.ppo_buffer import PPOBuffer
 from src.networks.ppo_networks import ActorNetwork, CriticNetwork
+from src.trainings.utils.seed import set_seed
 from src.utils.configs.config_reader import ConfigReader
 
 
@@ -57,6 +58,8 @@ class PPOAgent(Agent):
                  config: ConfigReader,
                  device: torch.device):
         super().__init__()
+        seed = config.get_param('training.seed', v_type=int, default=42)
+        set_seed(seed)
         self.device = device
 
         # Get network configurations

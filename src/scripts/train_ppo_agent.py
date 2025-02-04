@@ -8,7 +8,9 @@ from src.agents.PPOAgent import PPOAgent
 from src.enviroments.environment import Environment
 from src.enviroments.gymintercrop.intercropping_fertilization_env import IntercroppingFertilizationEnv
 from src.trainings.agent_trainer import AgentTrainer
+from src.trainings.utils.seed import set_seed
 from src.utils.configs.ini_config_reader import INIConfigReader
+from src.trainings.utils import seed
 
 
 def main():
@@ -30,6 +32,8 @@ def main():
         config_path=ppo_config_path,
         base_path=base_dir
     )
+    seed = ppo_config_reader.get_param('training.seed', v_type=int, default=42)
+    set_seed(seed)
 
     env = IntercroppingFertilizationEnv(
         env_1_files={
