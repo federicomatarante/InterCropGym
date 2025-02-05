@@ -43,13 +43,14 @@ class SACAgent(Agent):
         self.memory = ReplayMemory(capacity, seed)
         self.frequency_updater: FrequencyUpdater = _get_frequency_updater(config_reader)
 
-    def load(self, path: str) -> None:
-        agent_path = path / Path("sac.pt")
-        memory_path = path / Path("buffer.b")
+    def load(self, path: str | Path) -> None:
+        base_path = path.removesuffix(".pt")
+        agent_path = base_path / Path("sac.pt")
+        memory_path = base_path / Path("buffer.b")
         self.agent.load_checkpoint(agent_path)
         self.memory.load_buffer(memory_path)
 
-    def save(self, path: str) -> None:
+    def save(self, path: str | Path) -> None:
         base_path = path.removesuffix(".pt")
         agent_path = base_path / Path("sac.pt")
         memory_path = base_path / Path("buffer.b")

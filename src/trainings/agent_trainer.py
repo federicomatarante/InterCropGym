@@ -196,7 +196,8 @@ class AgentTrainer:
                                                                   v_type=float)
 
     @staticmethod
-    def from_checkpoint(agent: Agent, env: Environment, checkpoint_file: str): # TODO shoudl test this before definitive!
+    def from_checkpoint(agent: Agent, env: Environment,
+                        checkpoint_file: str | Path) -> 'AgentTrainer':
         """
         Creates an AgentTrainer instance from the given checkpoint.
         :param agent: the agent to use for the training. Careful! Load it before starting the training with proper  methods.
@@ -207,23 +208,53 @@ class AgentTrainer:
         :raises ValueError: if file is not in the valid format.
         :return: AgentTrainer loaded object.
         """
-        with open(checkpoint_file, 'w') as f:
-            try:
-                checkpoint = json.load(f)
-            except JSONDecodeError | TypeError | UnicodeDecodeError as e:
-                raise ValueError(f"Invalid file format: \n{e}")
-
+        try:
+            with open(checkpoint_file, 'rb') as f:
+                try:
+                    checkpoint = pickle.load(f)  # Changed to pickle.load since the save uses pickle.dump
+                except (pickle.PickleError, EOFError) as e:
+                    raise ValueError(f"Invalid checkpoint file format: \n{e}")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_file}")
         trainer = AgentTrainer(
             agent,
             env,
-            ConfigReader(checkpoint)
+            ConfigReader(checkpoint['config'])
         )
         trainer.train_returns = checkpoint['train_returns']
         trainer.eval_returns = checkpoint['eval_returns']
         trainer.train_steps = checkpoint['train_steps']
         trainer.episode = checkpoint['episode']
+        return trainer
 
-    def plot_progress(self) -> None:
+    def plot_training_history(self) -> None:
+        """Plot the training and evaluation returns.
+        Creates a figure showing the training returns and evaluation returns
+        over episodes.
+        """
+        # Close all existing plots
+        plt.close('all')
+
+        # Create new figure
+        plt.figure(figsize=(10, 5))
+
+        # Plot training returns
+        plt.plot(self.train_returns, label='Training Returns', alpha=0.6)
+
+        # Plot evaluation returns if they exist
+        if self.eval_returns:
+            eval_episodes = range(0, len(self.eval_returns) * self.eval_frequency, self.eval_frequency)
+            plt.plot(eval_episodes, self.eval_returns, label='Evaluation Returns', linewidth=2)
+
+        plt.xlabel('Episode')
+        plt.ylabel('Return')
+        plt.legend()
+        plt.title('Training Progress')
+
+        # Show the plot
+        plt.show(block=True)
+
+    def _plot_progress(self) -> None:
         """Plot the training and evaluation returns.
 
         Creates a figure showing the training returns and evaluation returns
@@ -263,7 +294,7 @@ class AgentTrainer:
         in real-time.
         """
         if self._fig is None or self._ax is None:
-            self.plot_progress()
+            self._plot_progress()
         else:
             self._ax.clear()
             self._ax.plot(self.train_returns, label='Training Returns', alpha=0.6)
@@ -334,13 +365,13 @@ class AgentTrainer:
                 train_return_item = episode_return.item()
 
                 if self.verbosity_level >= 2:
-                    print(f"Episode {self.episode} completed with reward: {float(episode_return):.2f}")
+                    print(f"Episode {self.episode + 1} completed with reward: {float(episode_return):.2f}")
 
                 # Periodic evaluation
                 if self.episode % self.eval_frequency == 0:
                     if self.verbosity_level >= 2:
-                        print(f"Running evaluation at episode {self.episode}")
-                    eval_return = self.evaluate(self.eval_episodes,verbosity)
+                        print(f"Running evaluation at episode {self.episode + 1}")
+                    eval_return = self.evaluate(self.eval_episodes, verbosity)
                     eval_return_item = eval_return.item()
                     if self.verbosity_level >= 2:
                         print(f"Evaluation return: {eval_return:.2f}")
@@ -364,18 +395,18 @@ class AgentTrainer:
 
                     if episodes_without_improvement >= self.early_stop_patience:
                         if self.verbosity_level >= 1:
-                            print(f"Early stopping triggered at episode {self.episode}")
+                            print(f"Early stopping triggered at episode {self.episode + 1}")
                         break
 
                 # Save checkpoint
                 if self.episode % self.save_frequency == 0:
                     if self.verbosity_level >= 2:
-                        print(f"Saving checkpoint at episode {self.episode}")
+                        print(f"Saving checkpoint at episode {self.episode + 1}")
                     self._save_checkpoint()
 
             except allowed_exceptions as e:
                 if self.verbosity_level >= 1:
-                    print(f"Caught allowed exception in episode {self.episode}: {str(e)}")
+                    print(f"Caught allowed exception in episode {self.episode + 1}: {str(e)}")
                 continue
             if train_return_item:
                 self.train_returns.append(train_return_item)
@@ -442,7 +473,7 @@ class AgentTrainer:
             if training:
                 metrics = self.agent.update(state, action, reward, next_state, done)
                 self.train_steps += 1
-                if metrics and self.verbosity_level >=2:
+                if metrics and self.verbosity_level >= 2:
                     print("\nTraining metrics")
                     for key, value in metrics.items():
                         if isinstance(value, (int, float)):

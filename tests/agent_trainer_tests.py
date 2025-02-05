@@ -120,7 +120,7 @@ class TestAgentTrainer(unittest.TestCase):
         self.trainer.train_returns = [1.0, 2.0, 3.0]
         self.trainer.eval_returns = [1.5, 2.5]
 
-        self.trainer.plot_progress()
+        self.trainer._plot_progress()
         mock_show.assert_called_once()
 
     def test_save_checkpoint(self):
