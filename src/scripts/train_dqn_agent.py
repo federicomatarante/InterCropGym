@@ -13,9 +13,9 @@ from src.utils.configs.ini_config_reader import INIConfigReader
 
 def main():
     base_dir = Path(__file__).parent.parent.parent
-    training_config_path = base_dir / 'data' / 'configs' / 'trainingConfig.ini'
+    training_config_path = base_dir / 'data' / 'configs' / 'dqn_trainingConfig.ini'
     env_config_path = base_dir / 'data' / 'configs' / 'environment.ini'
-    trainings_info_dir = base_dir / 'trainings' / 'DQG_agent'
+    trainings_info_dir = base_dir / 'trainings' / 'DQN_agent'
     sac_config_path = base_dir / 'data' / 'configs' / 'dqn.ini'
     os.makedirs(trainings_info_dir, exist_ok=True)
     training_config_reader = INIConfigReader(

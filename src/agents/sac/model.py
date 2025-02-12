@@ -97,7 +97,7 @@ class DeterministicPolicy(nn.Module):
         self.linear1 = nn.Linear(num_inputs, hidden_dim)
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.logits = nn.Linear(hidden_dim, num_actions)
-
+        self.softmax = nn.Softmax(dim=-1)
         # Small exploration noise for training
         self.exploration_eps = 0.1
 
@@ -107,14 +107,13 @@ class DeterministicPolicy(nn.Module):
         x = F.relu(self.linear1(state))
         x = F.relu(self.linear2(x))
         action_logits = self.logits(x)
-        return action_logits
+        return self.softmax(action_logits)
 
-    def sample(self, state):
-        logits = self.forward(state)
-        probs = F.softmax(logits, dim=-1)
+    def sample(self, state, evaluate=False):
+        probs = self.forward(state)
 
         # During training, add small epsilon exploration
-        if self.training:
+        if self.training or not evaluate:
             # Mix between argmax policy and uniform random
             random_probs = torch.ones_like(probs) / probs.shape[-1]
             mixed_probs = (1 - self.exploration_eps) * probs + self.exploration_eps * random_probs

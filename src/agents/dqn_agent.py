@@ -35,6 +35,8 @@ class QNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, num_actions)
         )
+        nn.init.uniform_(self.network[-1].weight, -1e-3, 1e-3)
+        nn.init.uniform_(self.network[-1].bias, -1e-3, 1e-3)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -84,7 +86,7 @@ class DQNAgent(Agent):
 
         # Setup optimizer
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=learning_rate)
-
+        self.max_norm = config_reader.get_param('optimizer.max_norm',v_type=float)
         # Initialize replay buffer with configuration
         buffer_capacity = config_reader.get_param('memory.capacity', v_type=int)
         self.batch_size = config_reader.get_param('memory.batch_size', v_type=int)
@@ -151,16 +153,18 @@ class DQNAgent(Agent):
         # Compute current Q values
         current_q_values = self.q_network(states_tensor).gather(1, actions_tensor)
         current_q_mean = current_q_values.mean().item()
-
         # Compute target Q values
         with torch.no_grad():
-            next_q_values = self.target_network(next_states_tensor).max(1)[0]
-            target_q_values = rewards_tensor + (1 - dones_tensor) * self.gamma * next_q_values
+            next_actions = self.q_network(next_states_tensor).max(1)[1].unsqueeze(1)
 
+            next_q_values = self.target_network(next_states_tensor).gather(1, next_actions).squeeze()
+            target_q_values = rewards_tensor + (1 - dones_tensor) * self.gamma * next_q_values
         # Compute loss and update
         loss = self.loss_fn(current_q_values.squeeze(), target_q_values)
         self.optimizer.zero_grad()
         loss.backward()
+
+        torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=self.max_norm)
         self.optimizer.step()
 
         # Update target network if needed
@@ -187,8 +191,9 @@ class DQNAgent(Agent):
         self.optimizer.load_state_dict(state_dict['optimizer'])
 
     def load(self, path: str) -> None:
-        agent_path = path / Path("sac.pt")
-        memory_path = path / Path("buffer.b")
+        base_path = str(path).removesuffix(".pt")
+        agent_path = base_path / Path("dqn.pt")
+        memory_path = base_path / Path("buffer.b")
         self.replay_buffer.load_buffer(memory_path)
         self._load_agent_checkpoint(agent_path)
 
@@ -199,7 +204,7 @@ class DQNAgent(Agent):
 
     def save(self, path: str) -> None:
         base_path = path.removesuffix(".pt")
-        agent_path = base_path / Path("sac.pt")
+        agent_path = base_path / Path("dqn.pt")
         memory_path = base_path / Path("buffer.b")
         os.makedirs(base_path, exist_ok=True)
         self._save_agent_checkpoint(agent_path)

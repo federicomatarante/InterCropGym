@@ -3,9 +3,7 @@ from pathlib import Path
 
 from pcse.exceptions import WeatherDataProviderError
 
-from src.agents.PPOAgent import PPOAgent
 from src.agents.dqn_agent import DQNAgent
-from src.agents.sac_agent import SACAgent
 from src.enviroments.environment import Environment
 from src.enviroments.gymintercrop.intercropping_fertilization_env import IntercroppingFertilizationEnv
 from src.trainings.agent_trainer import AgentTrainer
@@ -19,14 +17,17 @@ def main():
     trainings_info_dir = base_dir / 'trainings' / 'DQN_agent'
     ppo_config_path = base_dir / 'data' / 'configs' / 'dqn.ini'
     os.makedirs(trainings_info_dir, exist_ok=True)
+
     training_config_reader = INIConfigReader(
         config_path=training_config_path,
         base_path=trainings_info_dir
     )
+
     env_config_reader = INIConfigReader(
         config_path=env_config_path,
         base_path=base_dir
     )
+
     dqn_config_reader = INIConfigReader(
         config_path=ppo_config_path,
         base_path=base_dir
@@ -43,7 +44,6 @@ def main():
             'site': env_config_reader.get_param('files.env2_site', v_type=Path),
             'soil': env_config_reader.get_param('files.env2_soil', v_type=Path),
         },
-
     )
 
     agent = DQNAgent(
@@ -60,11 +60,11 @@ def main():
     training_env = Environment(env)
     training_env.load(env_ckp)
     trainer = AgentTrainer.from_checkpoint(agent, training_env, training_ckp)
-    eval_episodes = training_config_reader.get_param("episodes.eval_episodes",v_type=int)
+    eval_episodes = training_config_reader.get_param("episodes.eval_episodes", v_type=int)
 
-    trainer.plot_training_history()
+    trainer.plot_training_history(block=True)
     print(f"Evaluating agent over {eval_episodes} episodes")
-    avg_return = trainer.evaluate(eval_episodes, 'INFO')
+    avg_return = trainer.evaluate(eval_episodes, 'INFO', allowed_exceptions=(WeatherDataProviderError,))
     print("Average return: ", avg_return)
 
 

@@ -60,7 +60,7 @@ class DiscreteSAC(object):
 
     def _setup_policy(self, num_inputs: int, action_space: Discrete, lr: float, hidden_size: int):
 
-        if self.policy_type == "Gaussian":            # Target Entropy = −dim(A) (e.g. , -6 for HalfCheetah-v2) as given in the paper
+        if self.policy_type == "Gaussian":  # Target Entropy = −dim(A) (e.g. , -6 for HalfCheetah-v2) as given in the paper
             if self.automatic_entropy_tuning is True:
                 self.target_entropy = -float(np.log(action_space.n))
                 self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
@@ -84,8 +84,7 @@ class DiscreteSAC(object):
         :return: Selected action
         """
         state = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-        action, _, _ = self.policy.sample(state)
-
+        action, _, _ = self.policy.sample(state, evaluate)
         return action.detach().cpu().numpy()[0]
 
     def update_parameters(self, memory: ReplayMemory, batch_size: int, updates: int) -> Tuple[
@@ -99,13 +98,13 @@ class DiscreteSAC(object):
         :return: Tuple of (Q1 loss, Q2 loss, policy loss, alpha loss, alpha value)
         """
         # Step 1: Sample experiences from replay buffer and convert to Tensor for effectiveness
-        state_batch, action_batch, reward_batch, next_state_batch, mask_batch = memory.sample(batch_size=batch_size)
+        state_batch, action_batch, reward_batch, next_state_batch, dones_batch = memory.sample(batch_size=batch_size)
 
         state_batch = torch.FloatTensor(state_batch).to(self.device)
         next_state_batch = torch.FloatTensor(next_state_batch).to(self.device)
         action_batch = torch.LongTensor(action_batch).to(self.device)
         reward_batch = torch.FloatTensor(reward_batch).to(self.device).unsqueeze(1)
-        mask_batch = torch.FloatTensor(mask_batch).to(self.device).unsqueeze(1)
+        dones_batch = torch.FloatTensor(dones_batch).to(self.device).unsqueeze(1)
 
         # Step 2: Calculate the TD target for Q-function update
         with torch.no_grad():
@@ -113,12 +112,15 @@ class DiscreteSAC(object):
             next_state_action, next_state_log_pi, _ = self.policy.sample(next_state_batch)
             # Get Q-values for next state-action pairs from target networks
             qf1_next_target, qf2_next_target = self.critic_target(next_state_batch, next_state_action)
+            next_state_log_pi = next_state_log_pi.unsqueeze(-1)
+
+
             # Take minimum Q-value for each state-action to prevent overestimation
             # Subtract entropy term (alpha * log_prob) for maximum entropy objective
             min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - self.alpha * next_state_log_pi
             # Compute TD target: reward + gamma * (min_Q - alpha * log_prob)
             # mask_batch is 0 for terminal states, eliminating future reward term
-            next_q_value = reward_batch + mask_batch * self.gamma * (min_qf_next_target)
+            next_q_value = reward_batch + (1 - dones_batch) * self.gamma * min_qf_next_target
         # Step 3: Update Critics (Q-functions)
         # Get current Q-value estimates for state-action pairs
         # Two Q-functions to mitigate positive bias in the policy improvement step

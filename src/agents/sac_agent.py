@@ -44,7 +44,7 @@ class SACAgent(Agent):
         self.frequency_updater: FrequencyUpdater = _get_frequency_updater(config_reader)
 
     def load(self, path: str | Path) -> None:
-        base_path = path.removesuffix(".pt")
+        base_path = str(path).removesuffix(".pt")
         agent_path = base_path / Path("sac.pt")
         memory_path = base_path / Path("buffer.b")
         self.agent.load_checkpoint(agent_path)
@@ -59,7 +59,7 @@ class SACAgent(Agent):
         self.memory.save_buffer(memory_path)
 
     def update(self, state: np.ndarray, action: np.ndarray, reward: SupportsFloat, next_state: np.ndarray,
-               done: bool) -> Dict[str, float]: #
+               done: bool) -> Dict[str, float]:
         self.memory.push(state, action, float(reward), next_state, done)
         self.frequency_updater.step()
         if len(self.memory) > self.batch_size and self.frequency_updater.update():
