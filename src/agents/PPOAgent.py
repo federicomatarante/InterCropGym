@@ -5,12 +5,54 @@ import torch
 import torch.optim as optim
 from pandas.io.stata import stata_epoch
 from sympy.physics.quantum.density import entropy
+from sympy.physics.quantum.gate import normalized
 
 from src.agents.agent import Agent
 from src.buffers.ppo_buffer import PPOBuffer
 from src.networks.ppo_networks import ActorNetwork, CriticNetwork
 from src.trainings.utils.seed import set_seed
 from src.utils.configs.config_reader import ConfigReader
+
+class RunningNormalizer:
+    def __init__(self, shape, device, epsilon=1e-8):
+        self.mean = torch.zeros(shape, device=device)
+        self.std = torch.ones(shape, device=device)
+        self.count = epsilon
+        self.epsilon = epsilon
+        self.device = device
+
+    def update(self, x):
+        batch_mean = torch.mean(x, dim=0)
+        batch_size = x.shape[0]
+        batch_var = torch.var(x, dim=0, unbiased=False)
+
+        delta = batch_mean - self.mean
+        tot_count = self.count + batch_size
+
+        new_mean = self.mean + delta * batch_size / tot_count
+        m_a = self.std ** 2 * self.count
+        m_b = batch_var * batch_size
+        M2 = m_a + m_b + delta ** 2 * self.count * batch_size / tot_count
+        new_std = torch.sqrt(M2 / tot_count)
+
+        self.mean = new_mean
+        self.std = new_std
+        self.count = tot_count
+
+    def normalize(self, x):
+        return (x - self.mean) / (self.std + self.epsilon)
+
+    def state_dict(self):
+        return {
+            'mean': self.mean,
+            'std': self.std,
+            'count': self.count
+        }
+
+    def load_state_dict(self, state_dict):
+        self.mean = state_dict['mean'].to(self.device)
+        self.std = state_dict['std'].to(self.device)
+        self.count = state_dict['count']
 
 
 class PPOAgent(Agent):
@@ -61,6 +103,7 @@ class PPOAgent(Agent):
         seed = config.get_param('training.seed', v_type=int, default=42)
         set_seed(seed)
         self.device = device
+        self.state_normalizer = RunningNormalizer(state_dim, device)
 
         # Get network configurations
         actor_hidden = eval(config.get_param('network.actor_hidden_sizes'))
@@ -125,8 +168,11 @@ class PPOAgent(Agent):
         """
         state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
 
+        # Normalization
+        normalized_state = self.state_normalizer.normalize(state_tensor)
+
         with torch.no_grad():
-            action, _ = self.actor.get_action_and_log_prob(state_tensor)
+            action, _ = self.actor.get_action_and_log_prob(normalized_state)
             action_out = action if isinstance(action, (int, float)) else action.cpu().numpy()
             return action_out
 
@@ -145,11 +191,17 @@ class PPOAgent(Agent):
         # Store the transition inside the buffer
         with torch.no_grad():
             state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-            value = self.critic(state_tensor)
+
+            # Normalization
+            self.state_normalizer.update(state_tensor)
+            normalized_state = self.state_normalizer.normalize(state_tensor)
+
+            value = self.critic(normalized_state)
+
             # Convert action to tensor for log prob calculation
             action_tensor = torch.FloatTensor([action]) if isinstance(action, (int, float)) else torch.FloatTensor(action)
             action_tensor = action_tensor.to(self.device)
-            _, log_prob = self.actor.get_action_and_log_prob(state_tensor)
+            _, log_prob = self.actor.get_action_and_log_prob(normalized_state)
             log_prob = log_prob.cpu().numpy().item()
 
             # Store transition in buffer
@@ -178,6 +230,11 @@ class PPOAgent(Agent):
         :return: Dictionary containing update metrics
         """
         data = self.buffer.get()
+
+        # Normalization
+        states = data['states'] if torch.is_tensor(data['states']) else torch.FloatTensor(data['states']).to(self.device)
+        normalized_states = self.state_normalizer.normalize(states)
+
         total_policy_loss = 0
         total_value_loss = 0
         total_entropy = 0
@@ -199,7 +256,7 @@ class PPOAgent(Agent):
                 batch_indices = indices[start:end]
 
                 # Get batch data
-                states = data['states'][batch_indices]
+                states = normalized_states[batch_indices]
                 actions = data['actions'][batch_indices]
                 old_values = data['values'][batch_indices]
                 old_log_probs = data['log_probs'][batch_indices]
@@ -207,17 +264,16 @@ class PPOAgent(Agent):
                 dones = data['dones'][batch_indices]
 
                 # Get current policy distribution and value estimates
-                action_distribution = self.actor.get_distribution(states)
-                values = self.critic(states)
+                action_distribution = self.actor.get_distribution(normalized_states[batch_indices])
+                values = self.critic(normalized_states[batch_indices])
                 log_probs = action_distribution.log_prob(actions)
                 entropy = action_distribution.entropy().mean()
-                # probs_manual = action_distribution.probs # TODO remove these lines when entropy manual not needed anymore
-                # entropy_manual = -torch.sum(probs_manual * torch.log(probs_manual + 1e-8), dim=-1).mean()
-                # print(entropy_manual)
 
                 # Calculate advantages and returns
                 with torch.no_grad():
-                    final_value = self.critic(torch.FloatTensor(final_state).unsqueeze(0).to(self.device))
+                    final_state_tensor = torch.FloatTensor(final_state).unsqueeze(0).to(self.device)
+                    normalized_final_state = self.state_normalizer.normalize(final_state_tensor)
+                    final_value = self.critic(normalized_final_state)
                     next_values = torch.zeros_like(values)
                     next_values[:-1] = values[1:].clone()
                     next_values[-1] = final_value
@@ -324,7 +380,8 @@ class PPOAgent(Agent):
             'actor_state_dict': self.actor.state_dict(),
             'critic_state_dict': self.critic.state_dict(),
             'actor_optimizer_state_dict': self.actor_optimizer.state_dict(),
-            'critic_optimizer_state_dict': self.critic_optimizer.state_dict()
+            'critic_optimizer_state_dict': self.critic_optimizer.state_dict(),
+            'state_normalizer': self.state_normalizer.state_dict()
         }, path)
 
     def load(self, path: str) -> None:
@@ -338,3 +395,5 @@ class PPOAgent(Agent):
         self.critic.load_state_dict(checkpoint['critic_state_dict'])
         self.actor_optimizer.load_state_dict(checkpoint['actor_optimizer_state_dict'])
         self.critic_optimizer.load_state_dict(checkpoint['critic_optimizer_state_dict'])
+        if 'state_normalizer' in checkpoint:
+            self.state_normalizer.load_state_dict(checkpoint['state_normalizer'])
