@@ -14,7 +14,7 @@ from src.utils.configs.ini_config_reader import INIConfigReader
 
 def main():
     base_dir = Path(__file__).parent.parent.parent
-    training_config_path = base_dir / 'data' / 'configs' / 'trainingConfig.ini'
+    training_config_path = base_dir / 'data' / 'configs' / 'sac_trainingConfig.ini'
     env_config_path = base_dir / 'data' / 'configs' / 'environment.ini'
     trainings_info_dir = base_dir / 'trainings' / 'SAC_agent'
     sac_config_path = base_dir / 'data' / 'configs' / 'sac.ini'
@@ -52,7 +52,6 @@ def main():
         config_reader=sac_config_reader
     )
 
-
     trainer = AgentTrainer(
         agent=agent,
         env=Environment(env),
@@ -70,17 +69,6 @@ def main():
 if __name__ == '__main__':
     import torch
 
-    # Get current Python random seed
-    python_seed = random.getstate()[1][0]
-    print(f"Current Python random seed: {python_seed}")
-
-    # Get current NumPy seed
-    numpy_seed = np.random.get_state()[1][0]
-    print(f"Current NumPy random seed: {numpy_seed}")
-
-    # Get current PyTorch seed
-    torch_seed = torch.initial_seed()
-    print(f"Current PyTorch seed: {torch_seed}")
     print(f"PyTorch version: {torch.__version__}")
     print(f"CUDA available: {torch.cuda.is_available()}")
     if torch.cuda.is_available():

@@ -11,8 +11,8 @@ epsilon = 1e-6
 # Initialize Policy weights
 def weights_init_(m):
     if isinstance(m, nn.Linear):
-        torch.nn.init.xavier_uniform_(m.weight, gain=1)
-        torch.nn.init.constant_(m.bias, 0)
+        torch.nn.init.uniform_(m.weight, -3e-3, 3e-3)
+        torch.nn.init.uniform_(m.bias, -3e-3, 3e-3)
 
 
 class ValueNetwork(nn.Module):
@@ -79,7 +79,7 @@ class GaussianPolicy(nn.Module):
         action_logits = self.linear3(x)
         return action_logits
 
-    def sample(self, state):
+    def sample(self, state,evaluate=False):
         action_logits = self.forward(state)
         action_dist = torch.distributions.Categorical(logits=action_logits)
         action = action_dist.sample()

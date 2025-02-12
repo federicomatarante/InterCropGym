@@ -59,19 +59,17 @@ class DiscreteSAC(object):
         self._setup_policy(num_inputs, action_space, lr, hidden_size)
 
     def _setup_policy(self, num_inputs: int, action_space: Discrete, lr: float, hidden_size: int):
+        if self.automatic_entropy_tuning is True:
+            self.target_entropy = -float(np.log(action_space.n))
+            self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
+            self.alpha_optim = Adam([self.log_alpha], lr=lr)
 
         if self.policy_type == "Gaussian":  # Target Entropy = −dim(A) (e.g. , -6 for HalfCheetah-v2) as given in the paper
-            if self.automatic_entropy_tuning is True:
-                self.target_entropy = -float(np.log(action_space.n))
-                self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)
-                self.alpha_optim = Adam([self.log_alpha], lr=lr)
 
             self.policy = GaussianPolicy(num_inputs, action_space.n, hidden_size, action_space).to(
                 self.device)
             self.policy_optim = Adam(self.policy.parameters(), lr=lr)
         else:
-            self.alpha = 0
-            self.automatic_entropy_tuning = False
             self.policy = DeterministicPolicy(num_inputs, action_space.n, hidden_size, action_space).to(
                 self.device)
             self.policy_optim = Adam(self.policy.parameters(), lr=lr)
@@ -113,7 +111,6 @@ class DiscreteSAC(object):
             # Get Q-values for next state-action pairs from target networks
             qf1_next_target, qf2_next_target = self.critic_target(next_state_batch, next_state_action)
             next_state_log_pi = next_state_log_pi.unsqueeze(-1)
-
 
             # Take minimum Q-value for each state-action to prevent overestimation
             # Subtract entropy term (alpha * log_prob) for maximum entropy objective

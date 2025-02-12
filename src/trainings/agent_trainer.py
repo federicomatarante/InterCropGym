@@ -1,10 +1,12 @@
 import json
 import os
 import pickle
+import random
 from json import JSONDecodeError
 from typing import Dict, Any, Tuple
 from pathlib import Path
 import numpy as np
+import torch
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from numpy import floating
 from tqdm import tqdm
@@ -188,9 +190,20 @@ class AgentTrainer:
         os.makedirs(self.save_path / 'agents', exist_ok=True)
         os.makedirs(self.save_path / 'environments', exist_ok=True)
         os.makedirs(self.save_path / 'trainings', exist_ok=True)
-
         os.makedirs(self.log_path, exist_ok=True)
 
+        # Seeds
+        np_seed = config_reader.get_param("seeds.numpy", v_type=int, nullable=True, default=None)
+        py_seed = config_reader.get_param("seeds.python", v_type=int, nullable=True, default=None)
+        torch_seed = config_reader.get_param("seeds.pytorch", v_type=int, nullable=True, default=None)
+        if np_seed:
+            np.random.seed(np_seed)
+        if py_seed:
+            random.seed(py_seed)
+        if torch_seed:
+            torch.manual_seed(torch_seed)
+            torch.cuda.manual_seed(torch_seed)
+            torch.cuda.manual_seed_all(torch_seed)
         # Hyperparameters
         self.early_stop_patience = config_reader.get_param('early_stopping.early_stop_patience', v_type=int)
         self.early_stop_min_improvement = config_reader.get_param('early_stopping.early_stop_min_improvement',
@@ -266,8 +279,12 @@ class AgentTrainer:
         # Plot evaluation returns if they exist
         eval_line = None
         if self.eval_returns:
-            eval_episodes = range(0, len(self.eval_returns) * self.eval_frequency, self.eval_frequency)
-            eval_line = ax_returns.plot(eval_episodes, self.eval_returns,
+            eval_values = [self.train_returns[0]] + self.eval_returns
+            eval_returns = []
+            for i in range(int(len(self.train_returns) / self.eval_frequency) - 1):
+                eval_returns.extend(eval_values[i] for _ in range(self.eval_frequency))
+            eval_returns.extend(eval_values[-1] for _ in range(len(self.train_returns) - len(eval_returns)))
+            eval_line = ax_returns.plot(eval_returns,
                                         label='Evaluation Returns', linewidth=2)[0]
 
         # Customize the returns plot
