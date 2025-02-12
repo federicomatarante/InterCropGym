@@ -150,6 +150,8 @@ class ConfigReader:
             return data
         except KeyError as e:
             if default is None:
+                if nullable:
+                    return None
                 raise ValueError(f"Parameter {param_path} not found and no default value provided") from e
             return default
 
