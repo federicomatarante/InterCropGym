@@ -105,8 +105,8 @@ class PPOAgent(Agent):
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=lr)
 
         # Scheduler
-        self.actor_scheduler = optim.lr_scheduler.StepLR(self.actor_optimizer, step_size=500, gamma=0.7)
-        self.critic_scheduler = optim.lr_scheduler.StepLR(self.critic_optimizer, step_size=500, gamma=0.7)
+        self.actor_scheduler = optim.lr_scheduler.StepLR(self.actor_optimizer, step_size=100, gamma=0.7)
+        self.critic_scheduler = optim.lr_scheduler.StepLR(self.critic_optimizer, step_size=100, gamma=0.7)
 
         # Initialize buffer
         self.buffer = PPOBuffer(
@@ -246,7 +246,10 @@ class PPOAgent(Agent):
                 policy_loss = -torch.min(policy_loss_1, policy_loss_2).mean()
 
                 # Calculate value loss
-                value_loss = ((returns - values) ** 2).mean()
+                value_pred_clipped = old_values + torch.clamp(values - old_values, -self.clip_range, self.clip_range)
+                value_losses = (values - returns).pow(2)
+                value_losses_clipped = (value_pred_clipped - returns).pow(2)
+                value_loss = 0.5 * torch.max(value_losses, value_losses_clipped).mean()
 
                 # Calculate total loss
                 loss = policy_loss + self.vf_coef * value_loss - self.ent_coef * entropy

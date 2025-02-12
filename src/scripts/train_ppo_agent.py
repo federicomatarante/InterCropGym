@@ -62,6 +62,13 @@ def main():
         config_reader=training_config_reader
     )
 
+    # Model with reward around -60 / 0
+    # trainer = AgentTrainer.from_checkpoint(
+    #     agent=agent,
+    #     env=Environment(env),
+    #     checkpoint_file='/home/leo/PycharmProjects/RegenerativeAgricoltureRL/trainings/PPO_agent/my_agent_checkpoints/trainings/agent_ep2420.pt'
+    # )
+
     trainer.train(
         plot_progress=training_config_reader.get_param("debug.plot_progress", v_type=bool, default=True),
         verbosity=training_config_reader.get_param("debug.verbosity", v_type=str, default="INFO",
