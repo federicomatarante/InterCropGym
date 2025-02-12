@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import pcse
-from gym_crop.envs import FertilizationEnv
+from gym_crop.gym_crop.gym_crop.envs import FertilizationEnv
 from pcse.input import PCSEFileReader
 
 from src.enviroments.gymintercrop.utils.crop_state import CropState
