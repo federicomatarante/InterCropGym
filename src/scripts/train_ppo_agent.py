@@ -15,7 +15,7 @@ from src.trainings.utils import seed
 
 def main():
     base_dir = Path(__file__).parent.parent.parent
-    training_config_path = base_dir / 'data' / 'configs' / 'trainingConfig.ini'
+    training_config_path = base_dir / 'data' / 'configs' / 'ppo_trainingConfig.ini'
     env_config_path = base_dir / 'data' / 'configs' / 'environment.ini'
     trainings_info_dir = base_dir / 'trainings' / 'PPO_agent'
     ppo_config_path = base_dir / 'data' / 'configs' / 'ppo.ini'
