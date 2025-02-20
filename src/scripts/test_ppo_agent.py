@@ -61,13 +61,15 @@ def main():
     training_env = Environment(env)
     training_env.load(env_ckp)
     trainer = AgentTrainer.from_checkpoint(agent, training_env, training_ckp)
-    eval_episodes = training_config_reader.get_param("episodes.eval_episodes",v_type=int)
+    eval_episodes = training_config_reader.get_param("episodes.eval_episodes", v_type=int)
 
-    trainer.plot_training_history()
+    trainer.plot_training_history(block=True,show_metrics={"value_mean","value_std","advantage_mean","advantage_std"})
     print(f"Evaluating agent over {eval_episodes} episodes")
-    avg_return = trainer.evaluate(eval_episodes, 'INFO')
+    avg_return, avg_results = trainer.evaluate(eval_episodes, 'INFO', allowed_exceptions=(WeatherDataProviderError,))
     print("Average return: ", avg_return)
-
+    print("Weight of storage organs of crop 1: ", avg_results["WSO1"], "g/m^2")
+    print("Weight of storage organs of crop 2: ", avg_results["WSO2"], "g/m^2")
+    print("Total fertilizer used: ", avg_results["NTOT"], "kg/ha")
 
 if __name__ == '__main__':
     import torch

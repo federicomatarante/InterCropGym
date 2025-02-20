@@ -149,3 +149,6 @@ class Environment:
         :return: The action space
         """
         return self.env.action_space
+
+    def get_results(self):
+        return self.env.get_results()

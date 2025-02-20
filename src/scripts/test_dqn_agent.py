@@ -64,8 +64,11 @@ def main():
 
     trainer.plot_training_history(block=True)
     print(f"Evaluating agent over {eval_episodes} episodes")
-    avg_return = trainer.evaluate(eval_episodes, 'INFO', allowed_exceptions=(WeatherDataProviderError,))
+    avg_return, avg_results = trainer.evaluate(eval_episodes, 'INFO', allowed_exceptions=(WeatherDataProviderError,))
     print("Average return: ", avg_return)
+    print("Weight of storage organs of crop 1: ", avg_results["WSO1"], "g/m^2")
+    print("Weight of storage organs of crop 2: ", avg_results["WSO2"], "g/m^2")
+    print("Total fertilizer used: ", avg_results["NTOT"], "kg/ha")
 
 
 if __name__ == '__main__':

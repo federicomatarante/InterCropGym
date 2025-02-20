@@ -15,23 +15,6 @@ def weights_init_(m):
         torch.nn.init.uniform_(m.bias, -3e-3, 3e-3)
 
 
-class ValueNetwork(nn.Module):
-    def __init__(self, num_inputs, hidden_dim):
-        super(ValueNetwork, self).__init__()
-
-        self.linear1 = nn.Linear(num_inputs, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        self.linear3 = nn.Linear(hidden_dim, 1)
-
-        self.apply(weights_init_)
-
-    def forward(self, state):
-        x = F.relu(self.linear1(state))
-        x = F.relu(self.linear2(x))
-        x = self.linear3(x)
-        return x
-
-
 class QNetwork(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_dim):
         super(QNetwork, self).__init__()
@@ -79,7 +62,7 @@ class GaussianPolicy(nn.Module):
         action_logits = self.linear3(x)
         return action_logits
 
-    def sample(self, state,evaluate=False):
+    def sample(self, state, evaluate=False):
         action_logits = self.forward(state)
         action_dist = torch.distributions.Categorical(logits=action_logits)
         action = action_dist.sample()

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import SupportsFloat, Dict
 
 import numpy as np
+import torch
 from gym import Space
 from gym.spaces import Discrete
 
@@ -38,6 +39,7 @@ class SACAgent(Agent):
             'alpha_value': None,
         }
         self.agent = DiscreteSAC(num_inputs, action_space, config_reader)
+
         self.batch_size = config_reader.get_param('memory.batch_size', v_type=int)
         capacity = config_reader.get_param('memory.capacity', v_type=int)
         self.memory = ReplayMemory(capacity, seed)

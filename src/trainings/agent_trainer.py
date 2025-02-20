@@ -3,7 +3,7 @@ import os
 import pickle
 import random
 from json import JSONDecodeError
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, Set
 from pathlib import Path
 import numpy as np
 import torch
@@ -242,7 +242,7 @@ class AgentTrainer:
         trainer.episode = checkpoint['episode']
         return trainer
 
-    def plot_training_history(self, block=False) -> None:
+    def plot_training_history(self, block=False, show_metrics: Set[str] = None) -> None:
         """Plot the training and evaluation returns, along with other metrics.
         Creates multiple interactive figures showing the training returns, evaluation returns,
         and other metrics over episodes. Each metric gets its own subplot for better visibility.
@@ -260,7 +260,9 @@ class AgentTrainer:
         plt.close('all')
 
         # Calculate number of subplots needed (returns + metrics)
-        n_plots = 1 + len(self.avg_metrics)  # 1 for returns, plus each metric
+
+        n_plots = 1 + len(self.avg_metrics) if show_metrics is None else 1 + len(
+            show_metrics)  # 1 for returns, plus each metric
 
         # Create figure with subplots arranged vertically
         fig, axes = plt.subplots(n_plots, 1, figsize=(12, 5 * n_plots))
@@ -276,16 +278,15 @@ class AgentTrainer:
         ax_returns = axes[0]
         returns_line = ax_returns.plot(self.train_returns, label='Training Returns', alpha=0.6)[0]
 
-        # Plot evaluation returns if they exist
+        # Plot evalutation returns
+
         eval_line = None
         if self.eval_returns:
-            eval_values = [self.train_returns[0]] + self.eval_returns
-            eval_returns = []
-            for i in range(int(len(self.train_returns) / self.eval_frequency) - 1):
-                eval_returns.extend(eval_values[i] for _ in range(self.eval_frequency))
-            eval_returns.extend(eval_values[-1] for _ in range(len(self.train_returns) - len(eval_returns)))
-            eval_line = ax_returns.plot(eval_returns,
-                                        label='Evaluation Returns', linewidth=2)[0]
+            eval_returns = [self.train_returns[0], ]
+            eval_returns.extend(self.eval_returns)
+            eval_episodes = range(0, len(eval_returns) * self.eval_frequency, self.eval_frequency)
+            eval_line = ax_returns.plot(eval_episodes, eval_returns, label='Evaluation Returns', linewidth=2)
+        # Plot evaluation returns if they exist
 
         # Customize the returns plot
         ax_returns.grid(True, linestyle='--', alpha=0.7)
@@ -308,9 +309,14 @@ class AgentTrainer:
                 legline.set_picker(True)
                 legline.set_pickradius(5)
                 lined_returns[legline] = origline
-
         # Plot each metric in its own subplot
-        for idx, (name, values) in enumerate(self.avg_metrics.items(), start=1):
+        if show_metrics:
+            avg_metrics = {name: self.avg_metrics[name] for name in show_metrics}
+        else:
+            avg_metrics = self.avg_metrics
+        for idx, (name, values) in enumerate(avg_metrics.items(), start=1):
+            if show_metrics is not None and name not in show_metrics:
+                continue
             ax = axes[idx]
             line = ax.plot(values, label=name)[0]
 
@@ -553,26 +559,40 @@ class AgentTrainer:
         :return: Average return across all evaluation episodes
         """
         verbosity_levels = {"DEBUG": 3, "INFO": 2, "WARNING": 1, 'NONE': 0}
+        avg_results = {}
         self.verbosity_level = verbosity_levels.get(verbosity, 0)
         eval_returns = []
         for i in range(num_episodes):
             try:
                 if self.verbosity_level >= 3:
                     print(f"Starting episode {i + 1}/{num_episodes}")
-                episode_return, avg_metrics = self._run_episode(training=False)
+                episode_return, avg_metrics, episode_results = self._run_episode(training=False, return_results=True)
+
                 if self.verbosity_level >= 3:
                     print(f"Reward of episode {i + 1}: {episode_return}")
                 eval_returns.append(episode_return.item())
+
+                for key, value in episode_results.items():
+                    if key not in avg_results:
+                        avg_results[key] = value
+                    else:
+                        avg_results[key] += value
+
             except allowed_exceptions as e:
+                i -= 1
                 if self.verbosity_level >= 1:
                     print(f"Caught allowed exception in episode {self.episode + 1}: {str(e)}")
                 continue
-        return np.mean(eval_returns)
+        for key, value in avg_results.items():
+            avg_results[key] = value / num_episodes
+        return np.mean(eval_returns), avg_results
 
-    def _run_episode(self, training: bool = True) -> tuple[float, dict]:
+    def _run_episode(self, training: bool = True, return_results: bool = False) -> tuple[int, dict[
+        str, float | Any], Any] | tuple[int, dict[str, float | Any]]:
         """Run a single episode in the environment.
 
         :param training: Whether to update the agent during the episode
+        :param training: Whether to return episode results or not
         :return: Tuple of (total reward, average metrics dictionary)
         """
         state = self.env.reset()
@@ -622,7 +642,8 @@ class AgentTrainer:
         if num_updates > 0:
             for key, value in accumulated_metrics.items():
                 avg_metrics[key] = value / num_updates
-
+        if return_results:
+            return episode_return, avg_metrics, self.env.get_results()
         return episode_return, avg_metrics
 
     def _save_checkpoint(self) -> None:

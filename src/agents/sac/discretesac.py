@@ -13,6 +13,7 @@ from torch.optim import Adam
 from src.agents.sac.model import GaussianPolicy, QNetwork, DeterministicPolicy
 from src.agents.sac.replay_memory import ReplayMemory
 from src.agents.sac.utils import soft_update, hard_update
+from src.agents.utils.state_normalizer import RunningNormalizer
 from src.utils.configs.config_reader import ConfigReader
 
 

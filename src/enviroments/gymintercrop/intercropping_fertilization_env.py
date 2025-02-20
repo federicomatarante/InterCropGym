@@ -170,3 +170,13 @@ class IntercroppingFertilizationEnv(gym.Env):
         """
         self._fertilization_env_1.close()
         self._fertilization_env_2.close()
+
+    def get_results(self):
+        results_1 = self._fertilization_env_1.get_results()
+        results_2 = self._fertilization_env_2.get_results()
+        return {
+            'WSO1': results_1["WSO"],
+            'WSO2': results_2["WSO"],
+            'NTOT': results_1["NTOT"] + results_2["NTOT"]
+        }
+

@@ -4,7 +4,7 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import pcse
-from gym_crop.gym_crop.gym_crop.envs import FertilizationEnv
+from gym_crop.envs import FertilizationEnv
 from pcse.input import PCSEFileReader
 
 from src.enviroments.gymintercrop.utils.crop_state import CropState
@@ -40,6 +40,7 @@ class OpenCropGymEnv(FertilizationEnv):
         self._last_output = None
         self._pre_step_done = False
         self._update_done = False
+        self._total_nitrogen_applied = 0
         crop = PCSEFileReader(crop_file)
         soil = PCSEFileReader(soil_file)
         site = PCSEFileReader(site_file)
@@ -65,6 +66,7 @@ class OpenCropGymEnv(FertilizationEnv):
         """
 
         self._last_fertilizer = self._take_action(action)
+        self._total_nitrogen_applied += self._last_fertilizer.item()
         self._last_output = self._run_simulation(self.model)
 
         self._pre_step_done = True
@@ -86,6 +88,14 @@ class OpenCropGymEnv(FertilizationEnv):
         self._last_output = self._last_output.iloc[:-1]
         self._last_output = pd.concat([self._last_output, new_output])
         new_env_state.update_model(self.model)
+
+    def reset(self):
+        self._last_fertilizer = None
+        self._last_output = None
+        self._pre_step_done = False
+        self._update_done = False
+        self._total_nitrogen_applied = 0
+        return super().reset()
 
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, dict]:
         """
@@ -134,3 +144,11 @@ class OpenCropGymEnv(FertilizationEnv):
         self._pre_step_done, self._update_done = False, False
 
         return observation, reward, done, truncated, info
+
+    def get_results(self):
+        last_idx = len(self._last_output) - 1
+
+        return {
+            'WSO': self._last_output["WSO"].iloc[last_idx],
+            'NTOT': self._total_nitrogen_applied
+        }

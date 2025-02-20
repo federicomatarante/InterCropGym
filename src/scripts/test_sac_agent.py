@@ -12,7 +12,7 @@ from src.utils.configs.ini_config_reader import INIConfigReader
 
 def main():
     base_dir = Path(__file__).parent.parent.parent
-    training_config_path = base_dir / 'data' / 'configs' / 'trainingConfig.ini'
+    training_config_path = base_dir / 'data' / 'configs' / 'sac_trainingConfig.ini'
     env_config_path = base_dir / 'data' / 'configs' / 'environment.ini'
     trainings_info_dir = base_dir / 'trainings' / 'SAC_agent'
     ppo_config_path = base_dir / 'data' / 'configs' / 'sac.ini'
@@ -62,9 +62,11 @@ def main():
 
     trainer.plot_training_history(block=True)
     print(f"Evaluating agent over {eval_episodes} episodes")
-    avg_return = trainer.evaluate(eval_episodes, 'INFO', allowed_exceptions=(WeatherDataProviderError,))
+    avg_return, avg_results = trainer.evaluate(eval_episodes, 'INFO', allowed_exceptions=(WeatherDataProviderError,))
     print("Average return: ", avg_return)
-
+    print("Weight of storage organs of crop 1: ", avg_results["WSO1"], "g/m^2")
+    print("Weight of storage organs of crop 2: ", avg_results["WSO2"], "g/m^2")
+    print("Total fertilizer used: ", avg_results["NTOT"], "kg/ha")
 
 if __name__ == '__main__':
     import torch
