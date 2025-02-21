@@ -9,19 +9,19 @@
 2. pip
 ### Setup
 #### Clone the repository:
-git clone https://github.com/yourusername/yourproject.git
+`git clone https://github.com/federicomatarante/RegenerativeAgricoltureRL.git`
 
-cd yourproject
+`cd yourproject`
 #### Create a virtual environment (optional but recommended):
-python -m venv venv
+`python -m venv venv`
 
-source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+source `venv/bin/activate`  # On Windows use `venv\Scripts\activate`
 ### Install dependencies:
-pip install -r requirements.txt
+`pip install -r requirements.txt`
 ## Testing agents
 ### Test the DQN agent:
-python ./src/scripts/train_dqn_agent.py
+`python ./src/scripts/train_dqn_agent.py`
 ### Test the SAC agent:
-python ./src/scripts/train_sac_agent.py
+`python ./src/scripts/train_sac_agent.py`
 ### Test the PPO agent:
-python ./src/scripts/train_ppo_agent.py
+`python ./src/scripts/train_ppo_agent.py`
