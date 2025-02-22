@@ -25,3 +25,12 @@ source `venv/bin/activate`  # On Windows use `venv\Scripts\activate`
 `python ./src/scripts/train_sac_agent.py`
 ### Test the PPO agent:
 `python ./src/scripts/train_ppo_agent.py`
+
+## How to cite me
+@software{InterCropGym,
+   author = {Sandri Leonardo and Matarante Federico},
+   title = {RegenerativeAgricoltureRL: Intercropping expansion of CropGym environment for simulation with Reinforcement Learning techniques},
+   year = {2024},
+   url = {https://github.com/federicomatarante/RegenerativeAgricoltureRL},
+   version = {1.0.0}
+}
