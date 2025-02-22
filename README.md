@@ -1,4 +1,4 @@
-# Regenerative Agricolture RL
+# InterCropGym
 
 #### This repository shows how Reinforcement Learning technologies can be used in intercropping to optimize the nitrogen usage in crop fields.
 #### In particular, 3 agents have been implemented and compared: a SAC agent, PPO agent and a classical DQN agent.
@@ -31,6 +31,6 @@ source `venv/bin/activate`  # On Windows use `venv\Scripts\activate`
    author = {Sandri Leonardo and Matarante Federico},
    title = {RegenerativeAgricoltureRL: Intercropping expansion of CropGym environment for simulation with Reinforcement Learning techniques},
    year = {2024},
-   url = {https://github.com/federicomatarante/RegenerativeAgricoltureRL},
+   url = {https://github.com/federicomatarante/InterCropGym},
    version = {1.0.0}
 }`
