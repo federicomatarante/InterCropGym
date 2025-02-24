@@ -26,6 +26,14 @@ source `venv/bin/activate`  # On Windows use `venv\Scripts\activate`
 ### Test the PPO agent:
 `python ./src/scripts/train_ppo_agent.py`
 
+## License
+
+This research is licensed under CC BY-NC 4.0. For commercial applications, please contact us for licensing terms.
+[leonardosandri99@gmail.com] [federico.matarante@gmail.com]
+
+When citing this work:
+[Research Title] by [Authors] - [Link to repository]
+
 ## How to cite me
 `@software{InterCropGym,
    author = {Sandri Leonardo and Matarante Federico},
